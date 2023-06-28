@@ -1,0 +1,22 @@
+{
+    "name": "otpclasses/otpclasses",
+    "description": "The package of additional classes for use in projects.",
+    "keywords": ["classes", "projects", "package"],
+    "type": "library",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Otpclasses\\Otpclasses\\": "src/Otpclasses/"
+        }
+    },
+    "authors": [
+        {
+            "name": "gmalexmush",
+            "email": "gmalexmush@gmail.com"
+        }
+    ],
+    "require": {
+        "php": ">=7.4.3",
+        "servo/fluidxml": "1.21"
+    }
+}
