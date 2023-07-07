@@ -1,6 +1,8 @@
 <?php
 namespace Otpclasses\Otpclasses;
 
+use Drupal\Core;
+
 class SimpleLogging
 {
     //
@@ -19,23 +21,35 @@ class SimpleLogging
     public $ext_logging;
     public $loggingFunction;
     public $documentRoot;
+    public $documentRootCheck;
     public $eol;
 
     public $fullFolderName;
     public $fullNameLog;
     public $fullNameDebugLog;
     public $debugPrefix;
-    public $flagLocalProject;               // флаг тестового проекта
     public $boxLoggingIp;
     public $ipClient;
+    public $lang;
+    public $codeLang;
+    public $sitesBox;
+    public $domain;
 
     function __construct( $logName = '/simple_logging.log' )
     {
-        $this->timeZone         = 'Europe/Kiev';
+        $this->timeZone = 'Europe/Kiev';
+        $langManager = \Drupal::languageManager();
+        $this->lang  = $langManager->getCurrentLanguage();
+        $this->codeLang = $this->lang->getId();
         //
-        // если запуск не из под апача, а из под крона, то это только одно место в битрикс: /bitrix/php_interface/
+        // если запуск не из под апача, а из под крона, то это только одно место в DRUPAL:
         //
-        if( ! empty( $_SERVER["DOCUMENT_ROOT"] ) ) {
+        if( ! empty( DRUPAL_ROOT ) ) {
+
+          $this->documentRoot = DRUPAL_ROOT;
+          $this->documentRootCheck = realpath( dirname( __FILE__ ) . "/../../../.." );
+
+        } elseif( ! empty( $_SERVER["DOCUMENT_ROOT"] ) ) {
 
             $this->documentRoot     =  $_SERVER["DOCUMENT_ROOT"];
 
@@ -43,17 +57,40 @@ class SimpleLogging
 
             $this->documentRoot     =  realpath( dirname( __FILE__ ) . "/../../../.." );
         }
-        //
-        // flagLocalProject: имя файла-флага тестового проекта,
-        // может быть пустым, или содержать имя домена,
-        // например: avm.dp.ua, или otpbank.com.ua
-        // метод: IsLocalProject( $serverName, 'www' )
-        // определяет, является ли текущий проект
-        // локальным (тестовым), а заодно вытягивает
-        // из файла имя домена и формирует имя сервера, которое возвращается по ссылке в переменной $serverName.
-        //
-        $this->flagLocalProject = $this->documentRoot . '/local/local';
+        $sitesPath = $this->documentRoot . '/sites/sites.php';
+        if( is_file( $sitesPath ) )
+            include( $sitesPath );  // массив $sites загружается из настроек ДРУПАЛ-а
 
+        if( ! empty( $sites ) ) {
+
+          $this->sitesBox = [];
+
+          foreach ($sites as $url => $folder) {
+
+            $langCaption = mb_substr($folder, 1);
+            $language = ($langCaption == 'ua') ? 'uk' : $langCaption;
+
+            if ($this->codeLang == $language) {
+              // определили текущий язык, а значит и текущий сайт
+              $this->domain = $url;
+              $this->sitesBox[] = ['folder'=>$folder, 'domain'=>$url, 'lang'=>$language];  // всегда первым в массиве!
+              break;
+            }
+          }
+
+          foreach ($sites as $url => $folder) {
+
+            $langCaption = mb_substr($folder, 1);
+            $language = ($langCaption == 'ua') ? 'uk' : $langCaption;
+
+            if ($this->domain != $url) {
+              // этого домена в массиве еще нет - добавдяем
+              $this->domain = $url;
+              $this->sitesBox[] = ['folder'=>$folder, 'domain'=>$url, 'lang'=>$language];
+            }
+          }
+        }
+        //
         $this->IsStarting       = false;
         $this->IsFinish         = false;
         $this->SetLogOn();
@@ -66,7 +103,7 @@ class SimpleLogging
         $this->log_folder       = "/otp_logs";
         $this->eol              = "\r\n";
         $this->debugPrefix      = '-debug';
-        $this->fullFolderName	= $this->documentRoot . $this->log_folder;
+        $this->fullFolderName	= $this->documentRoot . '/sites/' . $this->sitesBox[0]['folder'] . $this->log_folder;
         $this->fullNameLog		= $this->fullFolderName . $this->log_name;
         $this->fullNameDebugLog = str_replace( '.log', $this->debugPrefix, $this->fullNameLog ) . '.log';
         $this->boxLoggingIp     = [];
@@ -149,7 +186,11 @@ class SimpleLogging
 
         foreach ($keys as $key) {
             if (!empty($_SERVER[$key])) {
-                $ip = trim(end(explode(',', $_SERVER[$key])));
+
+                $boxKey = explode(',', $_SERVER[$key]);
+
+                $ip = trim( end( $boxKey ) );
+
                 if (filter_var($ip, FILTER_VALIDATE_IP)) {
                     return $ip;
                 }
@@ -416,77 +457,5 @@ class SimpleLogging
 
         return( $result );
     }
-
-    public function IsLocalProject( & $serverName, $langSubDomain='' )
-        //
-        // $serverName      - в этой переменной возвращается найденное имя сервера.
-        // $langSubDomain   - в этой переменной находится либо 'www', либо языковый подддомен 'ru', либо пусто,
-        //                    если ничего такого не используется, или домен один.
-        // Метод проверяет наличие флага локального (тестового) проекта. Если он присутствует (файл: /local/local ),
-        // то из него вычитывается доменное имя, и имя сервера компонуется из  $langSubDomain + '.' + доменное имя.
-        // если $langSubDomain - пустое, то имя сервера компонуется только из доменного имени.
-        // если в массиве глобальных переменных PHP обнаружена переменная SERVER_NAME, и она не пустая,
-        // то имя сервера берется из этой переменной, а файл локального проекта мы не используем в этом случае.
-        //
-        // если файл локального проекта бнаружен, возвращается - TRUE, иначе - FALSE
-        //
-    {
-        $serverName     = '';
-        $result         = file_exists( $this->flagLocalProject );
-
-        if( $result ) {
-
-            if( empty( $_SERVER['SERVER_NAME'] ) ) {
-
-                $boxDoman = ['.dp.ua', '.com.ua'];
-                $isSubDomain = false;
-
-                $handle = fopen($this->flagLocalProject, "r");
-                $row = fgets($handle);
-                fclose($handle);
-
-                $row            = trim( $row );
-                $row            = trim( $row, $this->eol );
-
-                $lenServerName  = mb_strlen($row);
-
-                if ($lenServerName < 20 && $lenServerName > 0) {
-
-                    foreach ($boxDoman as $subDoman) {
-
-                        if (mb_strrpos($row, $subDoman) !== false) {
-                            $isSubDomain = true;
-                            break;
-                        }
-                    }
-
-                    if ($isSubDomain) {
-
-                        if (!empty($langSubDomain))                 // добавляем спереди: www. либо ru. либо en. или и т.д.
-                            $serverName = $langSubDomain . '.' . $row;
-                        else
-                            $serverName = $row;
-
-                        $this->logging_debug('Обнаружен флаг локального проекта, найдено текущее имя сервера: ' . $serverName );
-
-                    } else {
-                        $this->logging_debug('Обнаружен флаг локального проекта, но в указанном домене ( ' . $row . ' ) не найден ни один из заданных возможных поддоменов: ');
-                        $this->logging_debug($boxDoman);
-                    }
-
-                } else {
-
-                    $this->logging_debug('Обнаружен флаг локального проекта, но длина указанного домена больше 20 символов или равна 0: "' . $row . '"' );
-                }
-            } else {
-
-                $serverName     = $_SERVER['SERVER_NAME'];
-                $this->logging_debug('Обнаружен флаг локального проекта, текущее имя сервера взято из массива SERVER: ' . $serverName );
-            }
-        }
-
-        return( $result );
-    }
-
 
 }

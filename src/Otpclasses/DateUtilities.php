@@ -2,7 +2,7 @@
 
 namespace Otpclasses\Otpclasses;
 
-use OtpClasses\Otpclasses\LogUtilities;
+use Otpclasses\Otpclasses\LogUtilities;
 
 class DateUtilities extends LogUtilities
 {
@@ -464,6 +464,50 @@ class DateUtilities extends LogUtilities
 
         return( $result );
     }
+
+    public function i18nDateFormat( $format, $currentTime, $codeLang='ru' ) {
+
+      $upperLang = mb_strtoupper( $codeLang );
+
+      switch ( $upperLang ) {
+
+        case 'RU':
+          $currentLocale  = 'ru_RU'; // setlocale( LC_ALL, 'ru_RU', 'ru_RU.UTF-8', 'ru', 'russian');
+          break;
+        case 'UA':
+          $currentLocale  = 'uk_UA'; // setlocale( LC_ALL, 'uk_UA', 'uk_UA.UTF-8', 'ua', 'ukrainian');
+          break;
+        case 'EN':
+          $currentLocale  = 'en_US'; // setlocale( LC_ALL, 'en_US', 'en_US.UTF-8', 'en', 'english');
+          break;
+      }
+
+      if( $format == 'r' && class_exists( "\IntlDateFormatter" ) ) {
+
+        $formatter  = new \IntlDateFormatter(   $currentLocale,
+          \IntlDateFormatter::FULL,
+          \IntlDateFormatter::FULL,
+          \date_default_timezone_get(),
+          \IntlDateFormatter::GREGORIAN,
+          "ccc, dd LLL yyyy HH:mm:ss ZZZ" );
+
+        $result     = $formatter->format( $currentTime );
+
+      } else {
+
+        $formatter  = new \IntlDateFormatter(   $currentLocale,
+          \IntlDateFormatter::FULL,
+          \IntlDateFormatter::FULL,
+          \date_default_timezone_get(),
+          \IntlDateFormatter::GREGORIAN,
+          $format );
+
+        $result     = $formatter->format( $currentTime );
+      }
+
+      return( $result );
+    }
+
 
 }
 

@@ -1,8 +1,8 @@
 <?php
 namespace Otpclasses\Otpclasses;
 
-use OtpClasses\Otpclasses\SimpleLogging;
-use OtpClasses\Otpclasses\XMLUtility;
+use Otpclasses\Otpclasses\SimpleLogging;
+use Otpclasses\Otpclasses\XMLUtility;
 use \FluidXml\FluidXml;
 
 class LogUtilities extends SimpleLogging
@@ -16,7 +16,6 @@ class LogUtilities extends SimpleLogging
     public $timeStart;
     public $timeFinish;
     public $logFileSizeLimit;
-    public $logsInfoBlock;
     public $logCode;
     public $cuteBeModule;
     public $oldLogEnable;
@@ -40,7 +39,6 @@ class LogUtilities extends SimpleLogging
         $this->timeStart        = 0;
         $this->timeFinish       = 0;
 
-        $this->logsInfoBlock    = 'logs_control';
         $this->logCode          = mb_substr( $logName, 1, -4 );     // отрезаем спереди слэшь и сзади точку с расширением
         $this->cuteBeModule     = $cuteModule;
         $this->oldLogEnable     = $withOldLog;
@@ -232,14 +230,17 @@ class LogUtilities extends SimpleLogging
                     if (!empty($before))
                         fwrite($f, $before);
 
-                    fwrite($f, print_r($text, true));
+//                  $writeBox = print_r($text, true);
+                    $writeBox = json_encode( $text, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE );
+
+                    fwrite($f, $writeBox, 655360 );
                 }
             } else {
 
                 if (!empty($text))
-                    fwrite($f, $before . $text . $this->eol);
+                    fwrite($f, $before . $text . $this->eol, 655360 );
                 else
-                    fwrite($f, $text . $this->eol);
+                    fwrite($f, $text . $this->eol, 655360 );
             }
         }
 
@@ -723,173 +724,104 @@ class LogUtilities extends SimpleLogging
             //
             // позиция усечки лога определена
             //
-            if( $cuteModule ) {
+            //
+            $res_put = false;
+            $res_cut = false;
+            //
+            // загружаем остаток строк лога в буферный массив!
+            // в массиве возможно уже содержится найденный усеченный лог который был "потерян"
+            //
+            $this->timeStart = $this->offsetDebug * 3600 + time();
 
-                $properties = [ 'LOGS_FOLDER'               => mb_substr( $this->log_folder, 1 ),
-                    'LOG_JOBS'                  => 'Y',
-                    'LOG_CODE'                  => 'cute',
-                    'LOG_CUTE_DAYS'             => $this->num_days_cut,
-                    'LOG_DATE_FORMAT'           => $this->log_date_format,
-                    'LOG_ACTIVATION_DATETIME'   => $this->CurrentBitrixDateTimeString(),
-                    'LOG_CHANGED_DATETIME'      => $this->CurrentBitrixDateTimeString()
-                ];
+            while (($str = fgets($f, $len_buf)) !== false) {
+                $actual_strings [] = $str;
+                $resultFgets = true;
+            }
 
-                if( $debugLogging ) {
-                    $codeElement = $this->logCode . $this->debugPrefix;
-                    $idCute      = $this->cute_identifier . $this->debugPrefix;
+            $this->timeFinish = $this->offsetDebug * 3600 + time();
+
+            if ($resultFgets) {
+                //
+                // если загрузка строк прошла успешно, то:
+                //
+                if( $truncateLog ) {
+                    //
+                    // обнуляем файл и отдаем его заполнять другим процессам!
+                    //
+                    $res_cut = ftruncate($f, 0);                // обрезаем файл до 0
+                    fclose($f);                                      // отдаем его заполнять другим процессам!
                 } else {
-                    $codeElement = $this->logCode;
-                    $idCute      = $this->cute_identifier;
+                    $res_cut = true;
+                    fclose($f);
+                    rename( $file_name, $bakLogName );               // другие процессы создадут файл заново!
                 }
-
-                $element = $this->GetElementByCode( $this->logsInfoBlock,
-                                                    $codeElement,
-                                                    [   'LOG_JOBS',
-                                                        'LOG_JOBS_DATE',
-                                                        'LOG_ACTIVATION_DATETIME',
-                                                        'LOG_CHANGED_DATETIME' ] );
-
-                if( empty( $element ) ) {
-
-                    $resultInsert   = $this->InsertNewElementToBlock(   $properties,
-                                                                        $idCute,
-                                                                        $this->logsInfoBlock,
-                                                                        $codeElement );
-                    if( empty( $resultInsert[ 'error_code' ] ) ) {
-                        $this->logging_debug('Добавлен новый элемнт отслеживания лога: ' . $codeElement . '.log, id: ' . $resultInsert[ 'elem_id' ], $debugLogging );
-                    } else {
-                        $this->logging_debug('Ошибка добавления элемнта отслеживания лога: ' . $codeElement . '.log', $debugLogging );
-                    }
-                } else {
-                    date_default_timezone_set( 'UTC' );
-
-//                  $jobsDate           = $this->IsDateValid( $element['PROPERTIES']['LOG_JOBS_DATE'], $this->log_date_format );
-
-                    $dateSiteFormat     = \CSite::GetDateFormat();
-                    $jobsDate           = MakeTimeStamp( $element['PROPERTIES']['LOG_JOBS_DATE'], $dateSiteFormat );
-
-                    $currentDate        = intval( 86400 * floor( ( $this->offsetDebug * 3600 + time() )/86400 ), 10 );
-                    $deltaDate          = $currentDate - $jobsDate;
-
-                    date_default_timezone_set( $this->timeZone );
-
-//                  $this->logging_debug('Разность дат в секундах: ' . $deltaDate, $debugLogging );
-
-                    if( $element['PROPERTIES']['LOG_JOBS'] != 'Y' && $deltaDate > 0 ) {
-
-                        $properties[ 'LOG_CHANGED_DATETIME' ]   = $element['PROPERTIES']['LOG_CHANGED_DATETIME'];
-
-                        $this->ModifyPropertyValues($this->logsInfoBlock, $element['FIELDS']['ID'], $properties);
-
-                        $this->logging_debug('Заказ обрезки лога: ' . $codeElement );
-
-                    } else {
-
-//                      $this->logging_debug('Отказ обрезки лога: ' . $codeElement );
-//                      $this->logging_debug( $element );
-//                      $this->logging_debug('Разность между текущей датой и датой обрезки лога в секундах: ' . $deltaDate . ', а должна быть > 0' );
-                    }
-                }
-
-            } else {
+                //
+                // Сбрасываем всю накопленную в массиве $actual_strings информацию в "-cut.log" файл!
+                //
+                $f = fopen($newLogName, "w");
+                chmod($newLogName, 0664);
+                chown($newLogName, 'www-data');
+                chgrp($newLogName, 'www-data');
+                //
+                // пишем в него все что прочли!
                 //
                 $res_put = false;
-                $res_cut = false;
-                //
-                // загружаем остаток строк лога в буферный массив!
-                // в массиве возможно уже содержится найденный усеченный лог который был "потерян"
-                //
-                $this->timeStart = $this->offsetDebug * 3600 + time();
+                foreach ($actual_strings as $strings) {
 
-                while (($str = fgets($f, $len_buf)) !== false) {
-                    $actual_strings [] = $str;
-                    $resultFgets = true;
+                    if (!empty($strings)) {
+
+                        $res_put = fwrite($f, $strings);
+                        if (empty($res_put)) {
+
+                            $this->logging_debug('Ошибка обрезания лога во время записи строки: >' . $strings . '<', $debugLogging );
+                            break;
+                        }
+                    }
                 }
 
-                $this->timeFinish = $this->offsetDebug * 3600 + time();
+                fclose($f);
+                //
+                // "-cut.log" файл записан и закрыт. свободен.
+                //
+                if( $withOld ) {
 
-                if ($resultFgets) {
+                    $this->logging_debug('Переименовываем обрезок в OLD - лог: ' . $oldLogName, $debugLogging );
+                    rename( $newLogName, $oldLogName );
+
+                } else {
+                    $ostatok = file($file_name);
+
+                    $this->logging_debug('Переименовываем обрезок в лог: ' . $file_name, $debugLogging );
+                    rename($newLogName, $file_name);
+
+                    $f = fopen($file_name, "a+");
                     //
-                    // если загрузка строк прошла успешно, то:
+                    // дописываем остаток в прежний лог
                     //
-                    if( $truncateLog ) {
-                        //
-                        // обнуляем файл и отдаем его заполнять другим процессам!
-                        //
-                        $res_cut = ftruncate($f, 0);                // обрезаем файл до 0
-                        fclose($f);                                      // отдаем его заполнять другим процессам!
-                    } else {
-                        $res_cut = true;
-                        fclose($f);
-                        rename( $file_name, $bakLogName );               // другие процессы создадут файл заново!
-                    }
-                    //
-                    // Сбрасываем всю накопленную в массиве $actual_strings информацию в "-cut.log" файл!
-                    //
-                    $f = fopen($newLogName, "w");
-                    chmod($newLogName, 0664);
-                    chown($newLogName, 'www-data');
-                    chgrp($newLogName, 'www-data');
-                    //
-                    // пишем в него все что прочли!
-                    //
-                    $res_put = false;
-                    foreach ($actual_strings as $strings) {
+                    $resOstatok = false;
+                    foreach ($ostatok as $strings) {
 
                         if (!empty($strings)) {
 
-                            $res_put = fwrite($f, $strings);
-                            if (empty($res_put)) {
+                            $resOstatok = fwrite($f, $strings);
+                            if (empty($resOstatok)) {
 
-                                $this->logging_debug('Ошибка обрезания лога во время записи строки: >' . $strings . '<', $debugLogging );
+//                                  $this->logging_debug('Ошибка обрезания лога во время записи строки: >' . $strings . '<', $debugLogging );
                                 break;
                             }
                         }
                     }
 
-                    fclose($f);
-                    //
-                    // "-cut.log" файл записан и закрыт. свободен.
-                    //
-                    if( $withOld ) {
-
-                        $this->logging_debug('Переименовываем обрезок в OLD - лог: ' . $oldLogName, $debugLogging );
-                        rename( $newLogName, $oldLogName );
-
-                    } else {
-                        $ostatok = file($file_name);
-
-                        $this->logging_debug('Переименовываем обрезок в лог: ' . $file_name, $debugLogging );
-                        rename($newLogName, $file_name);
-
-                        $f = fopen($file_name, "a+");
-                        //
-                        // дописываем остаток в прежний лог
-                        //
-                        $resOstatok = false;
-                        foreach ($ostatok as $strings) {
-
-                            if (!empty($strings)) {
-
-                                $resOstatok = fwrite($f, $strings);
-                                if (empty($resOstatok)) {
-
-//                                  $this->logging_debug('Ошибка обрезания лога во время записи строки: >' . $strings . '<', $debugLogging );
-                                    break;
-                                }
-                            }
-                        }
-
-                    }
-                }
-
-                if ($res_put && $res_cut) {
-//                  $this->logging_debug( $resultBox['messages'], $debugLogging );
-                    $this->logging_debug('Обрезан лог: ' . $file_name . ', по дате: ' . $str_date . ', текущее время: ' . date( "d.m.Y H:i:s" ), $debugLogging );
-                } else {
-                    $this->logging_debug('Ошибка обрезания лога по дате: ' . $str_date, $debugLogging );
                 }
             }
+
+            if ($res_put && $res_cut) {
+//                  $this->logging_debug( $resultBox['messages'], $debugLogging );
+                $this->logging_debug('Обрезан лог: ' . $file_name . ', по дате: ' . $str_date . ', текущее время: ' . date( "d.m.Y H:i:s" ), $debugLogging );
+            } else {
+                $this->logging_debug('Ошибка обрезания лога по дате: ' . $str_date, $debugLogging );
+            }
+
 
         } else {
             $this->logging_debug( 'Усекать лог нет необходимости, количество дней в логе меньше усекаемого: ' . $days, $debugLogging );
