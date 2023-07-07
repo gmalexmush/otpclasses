@@ -3,7 +3,10 @@
 
 Installation / Usage
 --------------------
-
+Install:
+  composer require otpclasses/otpclasses
+Update:
+  composer update otpclasses/otpclasses
 
 Packages
 --------
