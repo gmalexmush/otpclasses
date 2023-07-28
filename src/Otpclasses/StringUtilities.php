@@ -1341,7 +1341,7 @@ class StringUtilities extends LogUtilities
         return( $result );
     }
 
-    public function InArrayAndSubarray( $caption, $box, $keySearch, $nextBoxField='items', &$indexFirst )
+    public function InArrayAndSubarray( $caption, $box, $keySearch, &$indexFirst, $nextBoxField='items' )
     //
     // метод ищет в сложном массиве по двум уровням, перебирая в цикле первый уровень, и в каждой итерации
     // берется поле - $nextBoxField, и в нем ищется значение - $caption по полю с названием - $keySearch
