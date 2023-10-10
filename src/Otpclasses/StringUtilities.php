@@ -14,7 +14,7 @@ class StringUtilities extends LogUtilities
 	public $arr_add_html;
 	public $arr_add_repl;
 
-     function __construct( $logName = '/utilities_for_bitrix.log', $cuteIdentifier = 'BitrixInerfaceUtilities.', $cuteModule = true, $withOldLog = true ) {
+     function __construct( $logName = '/utilities_for_string.log', $cuteIdentifier = 'StringInerfaceUtilities.', $cuteModule = true, $withOldLog = true ) {
 
         parent::__construct( $logName, $cuteIdentifier, $cuteModule, $withOldLog );
 
