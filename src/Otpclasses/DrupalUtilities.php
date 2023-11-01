@@ -151,8 +151,8 @@ class DrupalUtilities extends StringUtilities
 
             $media = Media::load($iconItem['target_id']);
             $boxMedia = $media->toArray();
-            $this->logging_debug( 'media:' );
-            $this->logging_debug( $boxMedia );
+//          $this->logging_debug( 'media:' );
+//          $this->logging_debug( $boxMedia );
 
             $meta = $boxMedia['thumbnail'][0];
 
@@ -289,8 +289,26 @@ class DrupalUtilities extends StringUtilities
 
 
 
-    public function LoadByReferencedId( & $boxResult, $type, $boxId,
+    public function LoadByReferencedId( & $boxResult, $type, $boxId, $boxFields=[], $fieldImage='',
                                         $sort='field_sorting', $sortDirection='asc', $entity='node', $status=1 )
+      //
+      // $boxResult =
+      // [ 0 =>
+      //      [
+      //           'title' => '....',
+      //         { 'image' => ['url'=>'...', ... ] } - необязательное, только если указано: $fieldImage
+      //         {  ...                            } - необязательное, только если указано: $boxFields
+      //      ]
+      //
+      //   1 =>
+      //      [
+      //           'title' => '....',
+      //           ...
+      //      ]
+      //
+      //   ...
+      // ]
+      //
     {
       $result = [ 'errorCode' => -1 ]; // ошибка
 
@@ -309,13 +327,62 @@ class DrupalUtilities extends StringUtilities
           foreach ($data as $node) {
 
             $resultSet = $node->toArray();
+            $item = [];
+            $item = [
+              'title' => $resultSet['title'][0]['value'],
+            ];
 
+            if( ! empty( $fieldImage ) ) {
+              $media = Media::load( $resultSet[ $fieldImage ][0]['target_id'] );
+              $boxMedia = $media->toArray();
+//            $this->logging_debug( 'media:' );
+//            $this->logging_debug( $boxMedia );
+              $meta = $boxMedia['thumbnail'][0];
+
+              if (!empty($media)) {
+
+                $source = $media->getSource();
+                $fid = $source->getSourceFieldValue($media);
+                $file = File::load($fid);
+
+                if (!empty($file)) {
+
+                  $url = \Drupal::service('file_url_generator')->generateString($file->getFileUri());
+
+                  $imgBox = [
+                    'file_id' => $file->id(),
+                    'created' => date('d-m-Y', $file->getCreatedTime()),
+                    'changed' => date('d-m-Y', $file->getChangedTime()),
+                    'name' => $file->getFilename(),
+                    'label' => empty($meta) ? $file->label() : $meta['alt'],
+                    'url' => $url,
+                    'mime' => $file->getMimeType()
+                  ];
+
+                  $item['image'] = $imgBox;
+                }
+              }
+            }
+
+            if( ! empty( $boxFields ) ) {
+              foreach ( $boxFields as $code => $name ) {
+
+                if( count( $resultSet[$name] ) > 1 ) {
+                  foreach ($resultSet[$name] as $item) {
+                    $item[$code][] = $resultSet[ $name ][0]['value'];
+                  }
+                } else {
+                  $item[$code] = $resultSet[$name][0]['value'];
+                }
+              }
+            }
+/*
             $boxResult [] = [
                               'code' => $resultSet['field_code100'][0]['value'],
-                              'title' => $resultSet['title'][0]['value'],
                               'details' => $resultSet['field_details100'][0]['value']
                             ];
-
+*/
+            $boxResult [] = $item;
           }
         }
       } catch( \Exception $e ) {
