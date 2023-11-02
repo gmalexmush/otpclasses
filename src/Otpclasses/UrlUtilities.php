@@ -574,6 +574,32 @@ class UrlUtilities extends LogUtilities
     return( $result );
   }
 
+  public function IsFoldersInUri( $folders, $uri, $levels=10 )
+  {
+    $previous = $uri;
+    $parentFolder = '';
+    $isUriSegment = false;
+    $i = 0;
+    while ( $i < $levels ) { // 10 уровней вложенности должно хватить ...
+
+      $parentFolder = $this->ParentFolder( $previous );
+//    $this->logging_debug( 'parentFolder: ' . $parentFolder );
+
+      if( $parentFolder != $previous ) {
+        $isUriSegment = in_array( $parentFolder, $folders );
+        if( $isUriSegment )
+          break;
+
+        $previous = $parentFolder;
+      } else {  // $parentFolder == $previous - дошли до корня! стоп машина...
+        break;
+      }
+      $i++;
+    }
+
+    return( $isUriSegment );
+  }
+
 
 }
 
