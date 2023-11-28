@@ -7,15 +7,20 @@ namespace Otpclasses\Otpclasses;
 use Drupal\file\Entity\File;
 use Drupal\media\Entity\Media;
 use Otpclasses\Otpclasses\StringUtilities;
+use Otpclasses\Otpclasses\UrlUtilities;
 
 class DrupalUtilities extends StringUtilities
 {
-
+      public $urlUtil;
 
      function __construct( $logName = '/utilities_for_drupal.log', $cuteIdentifier = 'DrupalInerfaceUtilities.', $cuteModule = true, $withOldLog = true ) {
 
-        parent::__construct( $logName, $cuteIdentifier, $cuteModule, $withOldLog );
 
+       parent::__construct( $logName, $cuteIdentifier, $cuteModule, $withOldLog );
+
+       $this->urlUtil = new UrlUtilities( $this->log_name, $this->cute_identifier, false );
+       $this->urlUtil->SetExternalLogging( [ 'function' => [ $this, "logging_debug" ] ] );
+       $this->urlUtil->SetStarting( true );
 
      }
 
@@ -395,5 +400,45 @@ class DrupalUtilities extends StringUtilities
 
       return( $result );
     }
+  /**
+   * Анализируются адреса текущей ноды, и в зависимсоти от условий дается ответ, подходит ли текущая нода, или нет.
+   *
+   * $uri - текущий URI страницы, $searchBox - массив URI на которых должна отображаться текущая нода.
+   *
+   * Возвращает true, если URI ноды найден в $uri текущей страницы (или в $uri родительской страницы, если $useRecursive = true).
+   * Возвращает false, если URI ноды не найден ни как ($useRecursive = true или false) в $uri текущей или родительской страницы.
+   */
+  public function CheckUriFetchedRowRecursive( $uri, $searchBox, $useRecursive = false ) {
+
+    $result = false;
+
+    $this->logging_debug( '' );
+    $this->logging_debug( 'current uri: ' . $uri );
+//  $this->logging_debug( '' );
+//  $this->logging_debug( 'searchBox:' );
+//  $this->logging_debug( $searchBox );
+
+    $is = array_search( $uri, $searchBox );
+//  $this->logging_debug( '' );
+//  $this->logging_debug( 'Recursive: ' . $useRecursive );
+    if( $is === false && $useRecursive == false )  // если в массиве $searchBox не найден текущий URI, пропускаем эту запись
+      $result = false;
+    //
+    // текущей папке $uri нода не подходит! проверяем ее рекурсивно в родительских папках $uri если $useRecursive == true ...
+    //
+    if( $is === false && $useRecursive ) {
+
+      $isUriSegment = $this->urlUtil->IsFoldersInUri( $searchBox, $uri, 10 );
+
+      if( ! $isUriSegment )
+        $result = false;  // нода не обнаружена ни где! в том числе и рекурсивно в родительсикх папках ...
+      else
+        $result = true;   // Текущая нода для текущей папки подходит. показываем ее.
+    }
+    //
+    return( $result );
+  }
+
+
 
 }
