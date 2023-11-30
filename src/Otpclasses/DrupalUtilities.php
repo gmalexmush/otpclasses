@@ -92,38 +92,42 @@ class DrupalUtilities extends StringUtilities
 
       $result = [ 'errorCode' => -1 ]; // ошибка
 
-      if( !empty( $box[ $fieldImage ] ) ) {
+      if( !empty( $box[ $fieldImage ] ) && !empty( $box[$fieldImage][0]['target_id'] ) ) {
 
         try {
           $media = Media::load($box[$fieldImage][0]['target_id']);
-          $boxMedia = $media->toArray();
-          $meta = $boxMedia['thumbnail'][0];
+
+          if( !empty( $media ) ) {
+            $boxMedia = $media->toArray();
+            $meta = $boxMedia['thumbnail'][0];
 
 //        $this->logging_debug( '' );
 //        $this->logging_debug( 'media:' );
 //        $this->logging_debug( $boxMedia );
 //        $this->logging_debug( '' );
 
-          if (!empty($media)) {
-            $fid = $media->getSource()->getSourceFieldValue($media);
-            $file = File::load($fid);
+            if (!empty($media)) {
+              $fid = $media->getSource()->getSourceFieldValue($media);
+              $file = File::load($fid);
 
-            if (!empty($file)) {
-              $imgSrc = \Drupal::service('file_url_generator')->generateString($file->getFileUri());
+              if (!empty($file)) {
+                $imgSrc = \Drupal::service('file_url_generator')->generateString($file->getFileUri());
 
-              if (!empty($fieldAlt))
-                $imgAlt = $box[$fieldAlt][0]['value'];
-              else
-                $imgAlt = empty($meta) ? $file->label() : $meta['alt'];
+                if (!empty($fieldAlt))
+                  $imgAlt = $box[$fieldAlt][0]['value'];
+                else
+                  $imgAlt = empty($meta) ? $file->label() : $meta['alt'];
 
-              if (!empty($fieldTitle))
-                $imgTitle = $box[$fieldTitle][0]['value'];
-              else
-                $imgTitle = empty($meta) ? $file->label() : $meta['alt'];
+                if (!empty($fieldTitle))
+                  $imgTitle = $box[$fieldTitle][0]['value'];
+                else
+                  $imgTitle = empty($meta) ? $file->label() : $meta['alt'];
 
-              $result = [];
+                $result = [];
+              }
             }
           }
+
         } catch( \Exception $e ) {
 
           $result = ['errorCode' => $e->getCode(), 'errorMessage' => $e->getMessage()];
@@ -410,10 +414,10 @@ class DrupalUtilities extends StringUtilities
    */
   public function CheckUriFetchedRowRecursive( $uri, $searchBox, $useRecursive = false ) {
 
-    $result = false;
+    $result = true;
 
-    $this->logging_debug( '' );
-    $this->logging_debug( 'current uri: ' . $uri );
+//  $this->logging_debug( '' );
+//  $this->logging_debug( 'current uri: ' . $uri );
 //  $this->logging_debug( '' );
 //  $this->logging_debug( 'searchBox:' );
 //  $this->logging_debug( $searchBox );
@@ -421,8 +425,10 @@ class DrupalUtilities extends StringUtilities
     $is = array_search( $uri, $searchBox );
 //  $this->logging_debug( '' );
 //  $this->logging_debug( 'Recursive: ' . $useRecursive );
-    if( $is === false && $useRecursive == false )  // если в массиве $searchBox не найден текущий URI, пропускаем эту запись
+    if( $is === false && $useRecursive == false ) { // если в массиве $searchBox не найден текущий URI, пропускаем эту запись
+
       $result = false;
+    }
     //
     // текущей папке $uri нода не подходит! проверяем ее рекурсивно в родительских папках $uri если $useRecursive == true ...
     //

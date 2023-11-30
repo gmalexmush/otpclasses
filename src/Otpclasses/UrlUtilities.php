@@ -493,9 +493,9 @@ class UrlUtilities extends LogUtilities
     }
 
 
-    public function NameLastFolder( $pathSection ) {
+    public function NameFirstFolder( $pathSection ) {
         //
-        //  выделяет из параметра $pathSection имя последней секции и возвращает его
+        //  выделяет из параметра $pathSection имя первой секции и возвращает его
         //
 
 //      $this->logging_debug( 'Path Section: ' . $pathSection );
