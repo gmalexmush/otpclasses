@@ -377,11 +377,18 @@ class DrupalUtilities extends StringUtilities
               foreach ( $boxFields as $code => $name ) {
 
                 if( count( $resultSet[$name] ) > 1 ) {
-                  foreach ($resultSet[$name] as $item) {
-                    $item[$code][] = $resultSet[ $name ][0]['value'];
+
+                  $this->logging_debug( '' );
+                  $this->logging_debug( 'code: ' . $code . ', name: ' . $name );
+                  $this->logging_debug( $resultSet[ $name ] );
+
+                  $i=0;
+                  foreach ($resultSet[$name] as $value) {
+                    $item[$code][] = $value['value'];
+                    $i++;
                   }
                 } else {
-                  $item[$code] = $resultSet[$name][0]['value'];
+                  $item[$code] = empty( $resultSet[$name][0]['value'] ) ? '' : $resultSet[$name][0]['value'];
                 }
               }
             }
