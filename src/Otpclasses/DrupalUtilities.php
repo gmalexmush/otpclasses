@@ -378,9 +378,9 @@ class DrupalUtilities extends StringUtilities
 
                 if( count( $resultSet[$name] ) > 1 ) {
 
-                  $this->logging_debug( '' );
-                  $this->logging_debug( 'code: ' . $code . ', name: ' . $name );
-                  $this->logging_debug( $resultSet[ $name ] );
+//                $this->logging_debug( '' );
+//                $this->logging_debug( 'code: ' . $code . ', name: ' . $name );
+//                $this->logging_debug( $resultSet[ $name ] );
 
                   $i=0;
                   foreach ($resultSet[$name] as $value) {
@@ -392,12 +392,7 @@ class DrupalUtilities extends StringUtilities
                 }
               }
             }
-/*
-            $boxResult [] = [
-                              'code' => $resultSet['field_code100'][0]['value'],
-                              'details' => $resultSet['field_details100'][0]['value']
-                            ];
-*/
+
             $boxResult [] = $item;
           }
         }
