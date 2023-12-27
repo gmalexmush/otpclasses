@@ -447,6 +447,27 @@ class DrupalUtilities extends StringUtilities
     return( $result );
   }
 
+  public function GetImage( $idImage )
+  {
+    //
+    // Получаем URI на картинку из настроек модуля
+    // $idImage - id картинки который отдает модуль настроек через форму настроек.
+    //
+    $image = false;
+/*
+    $this->logging_debug('');
+    $this->logging_debug('idBgImage:');
+    $this->logging_debug($idImage);
+*/
+    if (!empty($idImage)) {
+      $boxFile = \Drupal::entityTypeManager()->getStorage('file')->load($idImage[0]);
+      $image = \Drupal::service('file_url_generator')->generateString($boxFile->getFileUri());
+    }
+    //
+    //
+    //
+    return( $image );
+  }
 
 
 }

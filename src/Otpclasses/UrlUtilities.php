@@ -561,14 +561,14 @@ class UrlUtilities extends LogUtilities
     $result = $folder;
     $parentFolder = '';
 
-    for( $i = mb_strlen( $folder ) - 1; $i > 0; $i-- ) {
+    for( $i = mb_strlen( $folder ) - 1; $i >= 0; $i-- ) {
       $simbol = mb_substr( $folder, $i, 1 );
       if( $simbol == '/' ) {
-        $parentFolder = mb_substr( $folder, 0, $i );
+        $parentFolder = mb_substr( $folder, 0, $i+1 );
         break;
       }
     }
-    if( !empty( $parentFolder ) && mb_strlen( $parentFolder ) > 3 )
+    if( !empty( $parentFolder ) && mb_strlen( $parentFolder ) > 0 ) // было 3!!!
       $result = $parentFolder;
 
     return( $result );
@@ -583,12 +583,15 @@ class UrlUtilities extends LogUtilities
     while ( $i < $levels ) { // 10 уровней вложенности должно хватить ...
 
       $parentFolder = $this->ParentFolder( $previous );
+//    $this->logging_debug( '' );
 //    $this->logging_debug( 'parentFolder: ' . $parentFolder );
 
       if( $parentFolder != $previous ) {
         $isUriSegment = in_array( $parentFolder, $folders );
-        if( $isUriSegment )
+        if( $isUriSegment ) {
+          $isUriSegment = $parentFolder;
           break;
+        }
 
         $previous = $parentFolder;
       } else {  // $parentFolder == $previous - дошли до корня! стоп машина...
