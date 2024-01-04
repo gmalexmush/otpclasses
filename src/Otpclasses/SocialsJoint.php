@@ -4,13 +4,13 @@ namespace Otpclasses\Otpclasses;
 
 use Otpclasses\Otpclasses\UrlUtilities;
 
-class ContactsJoint extends UrlUtilities
+class SocialsJoint extends UrlUtilities
 {
   public $cfgForm;
   public $statusPublished;
 
 
-  public function __construct( $logName = '/contactsjoint.log', $cuteIdentifier = 'ContactsJoint.', $cuteModule = true, $withOldLog = true  ) {
+  public function __construct( $logName = '/socialsjoint.log', $cuteIdentifier = 'SocialsJoint.', $cuteModule = true, $withOldLog = true  ) {
 
     $this->statusPublished = 1;
     $this->cfgForm = \Drupal::configFactory()->getEditable('footers.settings');
@@ -24,7 +24,7 @@ class ContactsJoint extends UrlUtilities
   }
 
   /**
-   * В $dataFetched - массив прочитанных из БД нод с Contacts-ами
+   * В $dataFetched - массив прочитанных из БД нод с SocialServise-ами
    * Возвращает количество найденных нод удовлетворяющих заданным условиям.
    */
   public function ParseFetchedRows( $dataFetched, & $box, $useRecursive = false ) {
@@ -70,7 +70,7 @@ class ContactsJoint extends UrlUtilities
       // Текущая нода для текущей папки подходит. показываем ее.
       //
 //    $this->logging_debug('');
-//    $this->logging_debug('Contacts resultset:');
+//    $this->logging_debug('Socials resultset:');
 //    $this->logging_debug($resultSet);
 
       $title = empty( $resultSet['title'][0]['value'] ) ? '' : $resultSet['title'][0]['value'];
@@ -94,7 +94,7 @@ class ContactsJoint extends UrlUtilities
         'code' => $resultSet['field_code100'][0]['value'],
         'date_from' => $created,
         'name' => empty( $resultSet['title'][0]['value'] ) ? '' : $resultSet['title'][0]['value'],
-        'icon_code' => empty( $resultSet['field_codefolder'][0]['value'] ) ? '' : $resultSet['field_codefolder'][0]['value'],
+        'icon_class' => empty( $resultSet['field_codefolder'][0]['value'] ) ? '' : $resultSet['field_codefolder'][0]['value'],
         'folder' => $isUriSegment,
         'uri' => $uri,
         'link' => $link
@@ -117,9 +117,9 @@ class ContactsJoint extends UrlUtilities
     $data = [];
     $countRows = 0;
 
-    $useRecursive = $this->cfgForm->get('recursive_contacts'); // чекбокс - рекурсивный показ Faq в дочерних папках, если в них отсутствует свои Faq-и
-    $sort = $this->cfgForm->get('sort_field_contacts') ?? 'field_sorting';
-    $sortDirection = $this->cfgForm->get('sort_direct_contacts') ?? 'ASC';
+    $useRecursive = $this->cfgForm->get('recursive_socials'); // чекбокс - рекурсивный показ Faq в дочерних папках, если в них отсутствует свои Faq-и
+    $sort = $this->cfgForm->get('sort_field_socials') ?? 'field_sorting';
+    $sortDirection = $this->cfgForm->get('sort_direct_socials') ?? 'ASC';
 
     $textUseRecursive = empty( $useRecursive ) ? "false" : "true";
 /*
@@ -128,7 +128,7 @@ class ContactsJoint extends UrlUtilities
 */
     $nids = \Drupal::entityQuery('node')->accessCheck(FALSE)
       ->condition('status', $this->statusPublished)
-      ->condition('type', 'Contacts')
+      ->condition('type', 'SocialService')
       ->sort($sort, $sortDirection)
       ->execute();
 

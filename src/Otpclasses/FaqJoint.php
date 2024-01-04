@@ -72,8 +72,8 @@ class FaqJoint extends UrlUtilities
 
     $uri = \Drupal::request()->getRequestUri();
 
-    $this->logging_debug( '' );
-    $this->logging_debug( 'current uri: ' . $uri );
+//  $this->logging_debug( '' );
+//  $this->logging_debug( 'current uri: ' . $uri );
 
     foreach ($dataFetched as $node) {
 
