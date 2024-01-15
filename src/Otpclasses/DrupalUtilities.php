@@ -238,8 +238,8 @@ class DrupalUtilities extends StringUtilities
 
           $media = Media::load($iconItem['target_id']);
           $boxMedia = $media->toArray();
-          $this->logging_debug( 'media:' );
-          $this->logging_debug( $boxMedia );
+//        $this->logging_debug( 'media:' );
+//        $this->logging_debug( $boxMedia );
 
           $meta = $boxMedia['thumbnail'][0];
 
@@ -406,6 +406,29 @@ class DrupalUtilities extends StringUtilities
 
       return( $result );
     }
+
+  public function GetImage( $idImage )
+  {
+    //
+    // Получаем URI на картинку из настроек модуля
+    // $idImage - id картинки который отдает модуль настроек через форму настроек.
+    //
+    $image = false;
+    /*
+        $this->logging_debug('');
+        $this->logging_debug('idBgImage:');
+        $this->logging_debug($idImage);
+    */
+    if (!empty($idImage)) {
+      $boxFile = \Drupal::entityTypeManager()->getStorage('file')->load($idImage[0]);
+      $image = \Drupal::service('file_url_generator')->generateString($boxFile->getFileUri());
+    }
+    //
+    //
+    //
+    return( $image );
+  }
+
   /**
    * Анализируются адреса текущей ноды, и в зависимсоти от условий дается ответ, подходит ли текущая нода, или нет.
    *
@@ -418,15 +441,29 @@ class DrupalUtilities extends StringUtilities
 
     $result = true;
 
-//  $this->logging_debug( '' );
-//  $this->logging_debug( 'current uri: ' . $uri );
-//  $this->logging_debug( '' );
-//  $this->logging_debug( 'searchBox:' );
-//  $this->logging_debug( $searchBox );
+    if( mb_substr( $uri, -1, 1 ) != '/' )
+      $uri .= '/';                          // добавляем слэшь в конце
+
+    foreach ( $searchBox as &$item ) {
+
+      if( mb_substr( $item, -1, 1 ) != '/' )
+        $item .= '/';                          // добавляем слэшь в конце
+    }
+
+    $this->logging_debug( '' );
+    $this->logging_debug( 'current uri: ' . $uri );
+    $this->logging_debug( '' );
+    $this->logging_debug( 'searchBox:' );
+    $this->logging_debug( $searchBox );
 
     $is = array_search( $uri, $searchBox );
+    if( $is !== false ) {
+      $isUriSegment = $uri;
+      $result = $isUriSegment;   // Текущая нода для текущей папки подходит. показываем ее.
+    }
 //  $this->logging_debug( '' );
 //  $this->logging_debug( 'Recursive: ' . $useRecursive );
+
     if( $is === false && $useRecursive == false ) { // если в массиве $searchBox не найден текущий URI, пропускаем эту запись
 
       $result = false;
@@ -438,36 +475,97 @@ class DrupalUtilities extends StringUtilities
 
       $isUriSegment = $this->urlUtil->IsFoldersInUri( $searchBox, $uri, 10 );
 
-      if( ! $isUriSegment )
+      if( empty( $isUriSegment ) ) {
         $result = false;  // нода не обнаружена ни где! в том числе и рекурсивно в родительсикх папках ...
-      else
-        $result = true;   // Текущая нода для текущей папки подходит. показываем ее.
+
+        $this->logging_debug( '' );
+        $this->logging_debug( 'Нода не обнаружена в родительских папках!' );
+
+      } else {
+        $result = $isUriSegment;   // Текущая нода для текущей папки подходит. показываем ее.
+      }
     }
     //
     return( $result );
   }
 
-  public function GetImage( $idImage )
-  {
-    //
-    // Получаем URI на картинку из настроек модуля
-    // $idImage - id картинки который отдает модуль настроек через форму настроек.
-    //
-    $image = false;
-/*
-    $this->logging_debug('');
-    $this->logging_debug('idBgImage:');
-    $this->logging_debug($idImage);
-*/
-    if (!empty($idImage)) {
-      $boxFile = \Drupal::entityTypeManager()->getStorage('file')->load($idImage[0]);
-      $image = \Drupal::service('file_url_generator')->generateString($boxFile->getFileUri());
-    }
-    //
-    //
-    //
-    return( $image );
-  }
+  public function ReversalSearchFolderInURI( &$items, $data, $uri, $useRecursive, $foldersField, $uriField, $pluginLoadingDataRow ) {
 
+    $result = [];
+    $dataNodes = [];
+    $isUriSegment = false;
+    $isLocalUriSegment = false;
+
+    if (!empty($data)) {
+      //
+      // Ищем подходящие ноды соответствующие текущему $uri
+      //
+      foreach ($data as $node) {
+
+        $resultSet = $node->toArray();
+
+//      $this->drupalUtil->logging_debug( 'resultSet:' );
+//      $this->drupalUtil->logging_debug( $resultSet );
+
+        $searchBox = array_column( $resultSet[ $foldersField ], 'value' );
+
+//      $this->drupalUtil->logging_debug( 'searchBox:' );
+//      $this->drupalUtil->logging_debug( $searchBox );
+
+        $isLocalUriSegment = $this->CheckUriFetchedRowRecursive( $uri, $searchBox, false );
+
+        if( ! empty( $isLocalUriSegment ) ) {
+
+          $isUriSegment = $isLocalUriSegment;
+//        $dataNodes[] = $this->LoadingDataRow( $resultSet, $isUriSegment );
+          $dataNodes[] = call_user_func_array( $pluginLoadingDataRow[ 'function' ], [ $resultSet, $isUriSegment ] );
+
+        } else {
+          continue;
+        }
+      }
+      //
+      // Если не найдено ни одной ноды соответствующей текущему $uri,
+      // только в этом случае, и если $useRecursive == true, ищем ноды в родительских папках текущего $uri.
+      //
+      if( empty( $isUriSegment ) && $useRecursive == true ) {
+
+        foreach ($data as $node) {
+
+          $resultSet = $node->toArray();
+          $searchBox = array_column($resultSet[ $foldersField ], 'value');
+
+//        $this->drupalUtil->logging_debug( 'searchBox:' );
+//        $this->drupalUtil->logging_debug( $searchBox );
+
+          $isLocalUriSegment = $this->CheckUriFetchedRowRecursive($uri, $searchBox, $useRecursive );
+
+          if( ! empty( $isLocalUriSegment ) ) {
+
+            $isUriSegment = $isLocalUriSegment;
+//          $dataNodes[] = $this->LoadingDataRow( $resultSet, $isUriSegment );
+            $dataNodes[] = call_user_func_array( $pluginLoadingDataRow[ 'function' ], [ $resultSet, $isUriSegment ] );
+
+          } else {
+            continue;
+          }
+        }
+      }
+
+      $currentFolder = '';
+      foreach ( $dataNodes as $item ) {
+        if( mb_strlen( $currentFolder ) < mb_strlen( $item[ $uriField ] ) )
+          $currentFolder = $item[ $uriField ];
+      }
+
+      foreach ( $dataNodes as $item ) {
+        if( $currentFolder == $item[ $uriField ] )
+          $items[] = $item;
+      }
+
+    }
+
+    return( $result );
+  }
 
 }

@@ -561,7 +561,14 @@ class UrlUtilities extends LogUtilities
     $result = $folder;
     $parentFolder = '';
 
-    for( $i = mb_strlen( $folder ) - 1; $i >= 0; $i-- ) {
+    $len = mb_strlen( $folder );
+
+    if( mb_substr( $folder, -1, 1 ) == '/' )
+      $start = $len - 2;
+    else
+      $start = $len - 1;
+
+    for( $i = $start; $i >= 0; $i-- ) {
       $simbol = mb_substr( $folder, $i, 1 );
       if( $simbol == '/' ) {
         $parentFolder = mb_substr( $folder, 0, $i+1 );
@@ -583,8 +590,8 @@ class UrlUtilities extends LogUtilities
     while ( $i < $levels ) { // 10 уровней вложенности должно хватить ...
 
       $parentFolder = $this->ParentFolder( $previous );
-//    $this->logging_debug( '' );
-//    $this->logging_debug( 'parentFolder: ' . $parentFolder );
+      $this->logging_debug( '' );
+      $this->logging_debug( 'parentFolder: ' . $parentFolder . ', previous: ' . $previous );
 
       if( $parentFolder != $previous ) {
         $isUriSegment = in_array( $parentFolder, $folders );

@@ -2,16 +2,25 @@
 
 namespace Otpclasses\Otpclasses;
 
+use Otpclasses\Otpclasses\DrupalUtilities;
 use Otpclasses\Otpclasses\UrlUtilities;
 
 class FaqJoint extends UrlUtilities
 {
+  public $drupalUtil;
   public $cfgForm;
   public $statusPublished;
   public $boxBackgrounds;
 
 
   public function __construct( $logName = '/faqjoint.log', $cuteIdentifier = 'FaqJoint.', $cuteModule = true, $withOldLog = true  ) {
+
+    $logName  = "/faq.log";
+    $logCute  = "RenderFaq.";
+
+    $this->drupalUtil = new DrupalUtilities( $logName, $logCute, false );
+    $this->drupalUtil->SetExternalLogging( [ 'function' => [ $this, "logging_debug" ] ] );
+    $this->drupalUtil->SetStarting( true );
 
     $this->statusPublished = 1;
     $this->boxBackgrounds = ['virtual-cards', 'salary-cards', 'debit-cards', 'credit-cards', 'premium-cards' ];
@@ -65,67 +74,30 @@ class FaqJoint extends UrlUtilities
   }
 
   /**
-   * В $dataFetched - массив прочитанных из БД нод с Faq-ами
-   * Возвращает количество найденных нод удовлетворяющих заданным условиям.
+   * Возвращает массив данных найденных нод удовлетворяющих заданным условиям.
    */
-  public function ParseFetchedRows( $dataFetched, & $box, $useRecursive = false ) {
+  public function LoadingDataRow( $resultSet, $folder ) {
 
-    $uri = \Drupal::request()->getRequestUri();
+    $result = [];
+//  $this->logging_debug('');
+//  $this->logging_debug('Faq resultset:');
+//  $this->logging_debug($resultSet);
 
-//  $this->logging_debug( '' );
-//  $this->logging_debug( 'current uri: ' . $uri );
+    $title = empty( $resultSet['title'][0]['value'] ) ? '' : $resultSet['title'][0]['value'];
+    $created = date('d-m-Y', $resultSet['created'][0]['value']);
 
-    foreach ($dataFetched as $node) {
+    $result = [
+      'folder' => $folder,
+      'id' => $resultSet['nid'][0]['value'],
+      'code' => $resultSet['field_code100'][0]['value'],
+      'date_from' => $created,
+      'name' => empty( $resultSet['title'][0]['value'] ) ? '' : $resultSet['title'][0]['value'],
+      'annonce' => empty( $resultSet['field_blocktitle'][0]['value'] ) ? '' : $resultSet['field_blocktitle'][0]['value'],
+      'detail' => empty( $resultSet['field_detailshtml'][0]['value'] ) ? '' : $resultSet['field_detailshtml'][0]['value']
+    ];
 
-      $resultSet = $node->toArray();
-      $searchBox = array_column(  $resultSet['field_folderlink'] , 'value' );
-
-//    $this->logging_debug( '' );
-//    $this->logging_debug( 'searchBox:' );
-//    $this->logging_debug( $searchBox );
-
-      $is = array_search( $uri, $searchBox );
-
-//    $this->logging_debug( '' );
-//    $this->logging_debug( 'Recursive: ' . $useRecursive );
-
-      if( $is === false && $useRecursive == false )  // если в массиве URI указанных в записи не найден текущий URI, пропускаем этот баннер!
-        continue;
-      //
-      // в текущей папке нода не обнаружена! ищем ее рекурсивно в родительсикх папках ...
-      //
-      if( $is === false && $useRecursive ) {
-
-        $isUriSegment = $this->IsFoldersInUri( $searchBox, $uri );
-
-        if( ! $isUriSegment )
-          continue;
-      }
-      //
-      // Текущая нода для текущей папки подходит. показываем ее.
-      //
-//    $this->logging_debug('');
-//    $this->logging_debug('Faq resultset:');
-//    $this->logging_debug($resultSet);
-
-      $title = empty( $resultSet['title'][0]['value'] ) ? '' : $resultSet['title'][0]['value'];
-      $created = date('d-m-Y', $resultSet['created'][0]['value']);
-
-      $box[] = [
-        'id' => $resultSet['nid'][0]['value'],
-        'code' => $resultSet['field_code100'][0]['value'],
-        'date_from' => $created,
-        'name' => empty( $resultSet['title'][0]['value'] ) ? '' : $resultSet['title'][0]['value'],
-        'annonce' => empty( $resultSet['field_blocktitle'][0]['value'] ) ? '' : $resultSet['field_blocktitle'][0]['value'],
-        'detail' => empty( $resultSet['field_detailshtml'][0]['value'] ) ? '' : $resultSet['field_detailshtml'][0]['value']
-      ];
-//    $this->logging_debug( '' );
-//    $this->logging_debug( 'box:' );
-//    $this->logging_debug( $box );
-//    $this->logging_debug( '' );
-    }
     //
-    return( count( $box ) );
+    return( $result );
   }
 
   public function GetItemsData( & $items )
@@ -133,7 +105,8 @@ class FaqJoint extends UrlUtilities
     $result = [];
     $nids = [];
     $data = [];
-    $countRows = 0;
+
+    $uri = \Drupal::request()->getRequestUri();
 
     $useRecursive = $this->cfgForm->get('recursive'); // чекбокс - рекурсивный показ Faq в дочерних папках, если в них отсутствует свои Faq-и
     $sort = $this->cfgForm->get('sort_field') ?? 'field_sorting';
@@ -149,13 +122,15 @@ class FaqJoint extends UrlUtilities
     if( !empty( $nids ) )
       $data = \Drupal\node\Entity\Node::loadMultiple($nids);
 
-    if( !empty( $data ) ) {
-
-      $countRows = $this->ParseFetchedRows($data, $items);
-      if ($countRows == 0 && $useRecursive) {
-        $countRows = $this->ParseFetchedRows($data, $items, $useRecursive);
-      }
-    }
+    $this->drupalUtil->ReversalSearchFolderInURI(
+      $items,
+      $data,
+      $uri,
+      $useRecursive,
+      'field_folderlink',
+      'folder',
+      [ 'function' => [ $this, "LoadingDataRow" ] ]   // передается метод загрузки данных: LoadingDataRow для Call Back вызова
+    );
     //
     return( $result );
   }
