@@ -228,7 +228,10 @@ class DrupalUtilities extends StringUtilities
     // загрузка нескольких картинок (тип MEDIA) для БАННЕРА из резалт-сета ( параметр: $box )
     //
     $imgBox = [];
+    $images = [];
     $result = [ 'errorCode' => -1 ]; // ошибка
+    $widthDefault   = 1440;
+    $heightDefault  = 500;
 
     if( ! empty( $box[ $fieldImage ] ) ) {
 
@@ -253,19 +256,34 @@ class DrupalUtilities extends StringUtilities
 
             if (!empty($file)) {
 
-              $url = \Drupal::service('file_url_generator')->generateString($file->getFileUri());
+              $url = \Drupal::service('file_url_generator')->generateString( $file->getFileUri() );
+
+              if( $width == 0 || $height == 0 ) {
+
+                $streamWrapperManager = \Drupal::service('stream_wrapper_manager')->getViaUri($file->getFileUri());
+                $fileImagePath = $streamWrapperManager->realpath();
+                $imageInfo = getimagesize($fileImagePath);
+                $widthFromImage   = $imageInfo[0];
+                $heightFromImage  = $imageInfo[1];
+
+                $width     = empty( $widthFromImage ) ? $widthDefault : $widthFromImage;
+                $height    = empty( $heightFromImage ) ? $heightDefault : $heightFromImage;
+              }
 
               $htmlBanner = "<img alt=\"" . $media->label() . "\" imgtype=\"banner\" src=\"" .
                             $url . "\" style=\"border: 0;\" width=\"" .
                             $width . "\" height=\"" . $height . "\">";
 
-              $imgBox [] = [
+              $images [] = [
                 'file_id' => $file->id(),
                 'created' => date('d-m-Y', $file->getCreatedTime()),
                 'changed' => date('d-m-Y', $file->getChangedTime()),
                 'name' => $file->getFilename(),
                 'label' => empty($meta) ? $file->label() : $meta['alt'],
                 'url' => $url,
+                'alt' => $media->label(),
+                'width' => $width,
+                'height' => $height,
                 'body' => $htmlBanner,
                 'mime' => $file->getMimeType()
               ];
@@ -279,10 +297,29 @@ class DrupalUtilities extends StringUtilities
 
           for( $i=0; $i < count( $box[ $fieldCaption ] ); $i++ ) {
             $caption = $box[$fieldCaption][$i]['value'];
-            if( ! empty( $imgBox[$i] ) )
-              $imgBox[$i]['caption'] = $caption;
+            if( ! empty( $images[$i] ) )
+              $images[$i]['caption'] = $caption;
           }
         }
+
+        $htmlBanner = '';
+
+        foreach ( $images as $img ) {
+
+          if( ! empty( $img['caption'] ) )
+            $title = ' title="' . $img['caption'] . '"';
+          else
+            $title = '';
+
+          $htmlBanner .= "<img alt=\"" . $img['alt'] . "\" imgtype=\"banner\" src=\"" .
+            $img['url'] . "\" style=\"border: 0;\" width=\"" .
+            $img['width'] . "\" height=\"" . $img['height'] . "\"" . $title . ">";
+        }
+
+        $imgBox = [
+          'body' => $htmlBanner,
+          'images' => $images
+        ];
 
       } catch( \Exception $e ) {
 
