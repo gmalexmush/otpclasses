@@ -222,7 +222,14 @@ class DrupalUtilities extends StringUtilities
       return( $result );
     }
 
-  public function LoadBannerMediaImagesFromRow( &$imgBox, $box, $fieldImage, $width=1440, $height=500, $fieldCaption='' )
+  public function LoadBannerMediaImagesFromRow( &$imgBox,
+                                                $box,
+                                                $fieldImage,
+                                                $width=1440,
+                                                $height=500,
+                                                $fieldCaption='',
+                                                $imgClass='banner_image',
+                                                $imgClassAddon='' )
   {
     //
     // загрузка нескольких картинок (тип MEDIA) для БАННЕРА из резалт-сета ( параметр: $box )
@@ -232,6 +239,11 @@ class DrupalUtilities extends StringUtilities
     $result = [ 'errorCode' => -1 ]; // ошибка
     $widthDefault   = 1440;
     $heightDefault  = 500;
+    $bannerImgClass = $imgClass;
+
+    if( ! empty( $imgClassAddon ) )
+      $bannerImgClass .= ' ' . $imgClassAddon;
+
 
     if( ! empty( $box[ $fieldImage ] ) ) {
 
@@ -269,11 +281,11 @@ class DrupalUtilities extends StringUtilities
                 $width     = empty( $widthFromImage ) ? $widthDefault : $widthFromImage;
                 $height    = empty( $heightFromImage ) ? $heightDefault : $heightFromImage;
               }
-
+/*
               $htmlBanner = "<img alt=\"" . $media->label() . "\" imgtype=\"banner\" src=\"" .
                             $url . "\" style=\"border: 0;\" width=\"" .
-                            $width . "\" height=\"" . $height . "\">";
-
+                            $width . "\" height=\"" . $height . "\" class=\"" . $bannerImgClass . "\">";
+*/
               $images [] = [
                 'file_id' => $file->id(),
                 'created' => date('d-m-Y', $file->getCreatedTime()),
@@ -284,7 +296,7 @@ class DrupalUtilities extends StringUtilities
                 'alt' => $media->label(),
                 'width' => $width,
                 'height' => $height,
-                'body' => $htmlBanner,
+//              'body' => $htmlBanner,
                 'mime' => $file->getMimeType()
               ];
 
@@ -313,7 +325,7 @@ class DrupalUtilities extends StringUtilities
 
           $htmlBanner .= "<img alt=\"" . $img['alt'] . "\" imgtype=\"banner\" src=\"" .
             $img['url'] . "\" style=\"border: 0;\" width=\"" .
-            $img['width'] . "\" height=\"" . $img['height'] . "\"" . $title . ">";
+            $img['width'] . "\" height=\"" . $img['height'] . "\" class=\"" . $bannerImgClass . "\"" . $title . ">";
         }
 
         $imgBox = [

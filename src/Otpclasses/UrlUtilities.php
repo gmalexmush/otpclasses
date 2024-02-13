@@ -590,8 +590,8 @@ class UrlUtilities extends LogUtilities
     while ( $i < $levels ) { // 10 уровней вложенности должно хватить ...
 
       $parentFolder = $this->ParentFolder( $previous );
-      $this->logging_debug( '' );
-      $this->logging_debug( 'parentFolder: ' . $parentFolder . ', previous: ' . $previous );
+//    $this->logging_debug( '' );
+//    $this->logging_debug( 'parentFolder: ' . $parentFolder . ', previous: ' . $previous );
 
       if( $parentFolder != $previous ) {
         $isUriSegment = in_array( $parentFolder, $folders );
