@@ -228,7 +228,7 @@ class DrupalUtilities extends StringUtilities
                                                 $width=1440,
                                                 $height=500,
                                                 $fieldCaption='',
-                                                $imgClass='banner_image',
+                                                $imgClass='',
                                                 $imgClassAddon='' )
   {
     //
