@@ -252,7 +252,12 @@ class DrupalUtilities extends StringUtilities
         foreach ($box[$fieldImage] as $iconItem) {
 
           $media = Media::load($iconItem['target_id']);
+
+          if( empty( $media ) )
+            continue;
+
           $boxMedia = $media->toArray();
+
 //        $this->logging_debug( 'media:' );
 //        $this->logging_debug( $boxMedia );
 
