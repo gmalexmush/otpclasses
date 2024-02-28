@@ -75,8 +75,14 @@ class UrlUtilities extends LogUtilities
         if( empty( $isHttps ) ) {
             if( isset($_SERVER['HTTPS']) || isset($_SERVER['SERVER_PORT'])) {
 
-                $resultHttps = ($_SERVER['HTTPS'] || $_SERVER['SERVER_PORT'] == "443") ? true : false;
-//              $this->logging_debug( 'Is $_SERVER[ HTTPS ] or $_SERVER[ SERVER_PORT ] !' );
+              if( isset($_SERVER['HTTPS']) ) {
+
+                $resultHttps = empty( $_SERVER['HTTPS'] ) ? false : true;
+//              $this->logging_debug( 'Is $_SERVER[ HTTPS ] !' );
+              } else {
+                $resultHttps = ( $_SERVER['SERVER_PORT'] == "443") ? true : false;
+//              $this->logging_debug( 'Is $_SERVER[ SERVER_PORT ] !' );
+              }
 
             } else {
                 $resultHttps = $this->defaultIsHttps;
