@@ -2,6 +2,7 @@
 
 namespace Otpclasses\Otpclasses;
 
+use Drupal\Core\Url;
 use Otpclasses\Otpclasses\LogUtilities;
 use Drupal\Core\Site\Settings;
 
@@ -236,6 +237,9 @@ class UrlUtilities extends LogUtilities
     //
     public function LastSection( $path ) {
 
+      if( $path == "/" || $path == "\\" ) {
+        $result = $path;
+      } else {
         $this->init();
         $NextFolder = true;
 
@@ -244,7 +248,10 @@ class UrlUtilities extends LogUtilities
             $NextFolder = $this->NextSection( $path );
         }
 
-        return( $PrevFolder );
+        $result = $PrevFolder;
+      }
+
+      return( $result );
     }
 
 
@@ -259,7 +266,7 @@ class UrlUtilities extends LogUtilities
     {
         $result     = true;
         $fragments  = parse_url( $url );
-        $query      = $fragments[ 'query' ];
+        $query      = $fragments[ 'query' ] ?? '';
 
         if( !empty( $query ) ) {
 
@@ -273,16 +280,14 @@ class UrlUtilities extends LogUtilities
 
             foreach ($boxParameters as $item) {
 
-                $itemValue   = $boxParameterValue[ $item ];
+                if( empty( $boxParameterValue[ $item ] ) ) {
 
-                if( empty($itemValue) ) {
-
-//                  $this->logging_debug( 'parameter: ' . $item . ' - пустой' );
-
-                    $result     = false;
-                    break;
+//                $this->logging_debug( 'parameter: ' . $item . ' - пустой' );
+                  $result     = false;
+                  break;
                 }
             }
+
         } else {
 //          $this->logging_debug( 'Параметры в запросе отсутствуют!' );
             $result = false;
@@ -386,7 +391,8 @@ class UrlUtilities extends LogUtilities
     public function SearchSpecifiedParametersInUrls( $boxUrl, $boxParameters, & $isAllParameters )
     //
     // в массиве $boxUrl ищется заданный в $boxParameters список параметров с их значениями и возвращается.
-    // если ничего не найдено - возвращается пустой массив
+    // если параметры найдены, то в $isAllParameters возвращается - true
+    // если ничего не найдено - возвращается пустой массив, а в $isAllParameters возвращается - false
     //
     {
         $result             = [];
@@ -616,6 +622,51 @@ class UrlUtilities extends LogUtilities
     return( $isUriSegment );
   }
 
+  public function GetCurrentPath()
+    //
+    // Возвращает текущий путь страницы с параметрами, например: /node/666?zopa=big
+    //
+  {
+    $result = \Drupal::service('path.current')->getPath();
+    return( $result );
+  }
+
+  public function GetCurrentPageAlias()
+    //
+    // Возвращает только текущий алиас пути к странице без параметров, например:   /main
+    // особенность этого метода в том, что для страницы которая объявлена в друпал как главная,
+    // он вернет не "/",  а ее прописанный алиас "/main"
+    //
+  {
+    $currentNodePath = $this->GetCurrentPath();
+    $result = \Drupal::service('path_alias.manager')->getAliasByPath($currentNodePath);
+
+    return( $result );
+  }
+
+
+  public function GetCurrentPathWithoutParameters()
+    //
+    // Возвращает только текущий (и реальный для сайта) путь к странице без параметров
+    // по сути URI
+    //
+  {
+      $uri = \Drupal::request()->getRequestUri();
+      $box = parse_url( $uri );
+      $result = $box['path'];
+
+    return( $result );
+  }
+
+
+  public function GetCurrentUrl()
+    //
+    // Возвращает полный URL адрес текущей страницы сайта со всеми параметрами
+    //
+  {
+    $result = Url::fromRoute('<current>', [], ['query' => \Drupal::request()->query->all(), 'absolute' => 'true'])->toString();
+    return( $result );
+  }
 
 }
 

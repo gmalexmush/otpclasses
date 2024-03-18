@@ -6,12 +6,13 @@ use Otpclasses\Otpclasses\LogUtilities;
 use Otpclasses\Otpclasses\DirUtilities;
 use Otpclasses\Otpclasses\StringUtilities;
 use Otpclasses\Otpclasses\CommonDataBox;
+use Otpclasses\Otpclasses\UrlUtilities;
 
 class OtpUtilities extends LogUtilities
 {
-    public $infoBlockList;
     public $StringUtils;
     public $dirUtils;
+    public $urlUtil;
 
     public $localEmailTO;
     public $localEmailCC;
@@ -26,6 +27,7 @@ class OtpUtilities extends LogUtilities
 
         $this->StringUtils      = new StringUtilities( $logName, $cuteIdentifier, $cuteModule, $withOldLog );
         $this->dirUtils         = new DirUtilities( $logName, $cuteIdentifier, $cuteModule, $withOldLog );
+        $this->urlUtil          = new UrlUtilities( $logName, $cuteIdentifier, $cuteModule, $withOldLog );
 
         $this->num_days_cut     = 7;
 
@@ -33,6 +35,8 @@ class OtpUtilities extends LogUtilities
         $this->StringUtils->SetStarting( true );
         $this->dirUtils->SetExternalLogging( [ 'function' => [ $this, "logging_debug" ] ] );
         $this->dirUtils->SetStarting( true );
+        $this->urlUtil->SetExternalLogging( [ 'function' => [ $this, "logging_debug" ] ] );
+        $this->urlUtil->SetStarting( true );
     }
 
     public function __destruct() {
@@ -436,5 +440,49 @@ class OtpUtilities extends LogUtilities
     return ( number_format ($amount, 2, '.', ' ') );
   }
 
+  public function GetRequestValue( &$form, $field, $defaultValue )
+  {
+    //
+    // функция заполняет поле формы ($field в массиве формы $form) значением по умолчанию,
+    // которое берется из аргумента $defaultValue,
+    //
+    if( ! empty( $form['elements'][$field] )
+        && ! empty( $form['elements'][$field]['#prepopulate'] )
+        && ! empty( $defaultValue ) ) {
+
+      $form['elements'][$field]['#default_value'] = $defaultValue;
+      $this->logging_debug( $field . ': ' . $form['elements'][$field]['#default_value'] );
+    }
+  }
+
+  public function GetParametersInSources( $referer,
+                                         $boxParams=[ 'utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term' ] )
+    //
+    // В строке $referer и $_SERVER['HTTP_REFERER'] осуществляется поиск параметров из $boxParams.
+    // резулбьтат возвращается в массиве в виде: ПАРАМЕТР => ЗНАЧЕНИЕ
+    //
+  {
+
+    $isAllUtm = false;
+    $anotherReferer  =  $_SERVER['HTTP_REFERER'] ?? '';
+    $resultBox = $this->urlUtil->SearchSpecifiedParametersInUrls( [ $referer, $anotherReferer ],
+                                                                  $boxParams,
+                                                                  $isAllUtm );
+
+    foreach ( $resultBox as $name => &$value ) {
+
+      $value = rawurldecode( $value );
+      $this->logging_debug( 'before: ' . $name . ' => ' . $value );
+
+      $value     = str_replace( '+', ' ', $value );
+
+      if( mb_strpos( $value, ' ' ) !== false )
+        $value = '"' . $value . '"';
+
+      $this->logging_debug( 'after: ' . $name . ' => ' . $value );
+    }
+
+    return( $resultBox );
+  }
 
 }

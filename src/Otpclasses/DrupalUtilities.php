@@ -504,11 +504,11 @@ class DrupalUtilities extends StringUtilities
         $item .= '/';                          // добавляем слэшь в конце
     }
 
-    $this->logging_debug( '' );
-    $this->logging_debug( 'current uri: ' . $uri );
-    $this->logging_debug( '' );
-    $this->logging_debug( 'searchBox:' );
-    $this->logging_debug( $searchBox );
+//  $this->logging_debug( '' );
+//  $this->logging_debug( 'current uri: ' . $uri );
+//  $this->logging_debug( '' );
+//  $this->logging_debug( 'searchBox:' );
+//  $this->logging_debug( $searchBox );
 
     $is = array_search( $uri, $searchBox );
     if( $is !== false ) {

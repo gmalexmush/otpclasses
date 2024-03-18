@@ -39,7 +39,7 @@ class FaqJoint extends UrlUtilities
     //
     // Получаем URI на картинку для бакграунда из настроек модуля
     //
-    $uri = \Drupal::request()->getRequestUri();
+    $uri = $this->GetCurrentPathWithoutParameters(); // \Drupal::request()->getRequestUri();
     $bgrCode = false;
 
     foreach ( $this->boxBackgrounds as $folder ) {
@@ -106,7 +106,7 @@ class FaqJoint extends UrlUtilities
     $nids = [];
     $data = [];
 
-    $uri = \Drupal::request()->getRequestUri();
+    $uri = $this->GetCurrentPathWithoutParameters(); // \Drupal::request()->getRequestUri();
 
     $useRecursive = $this->cfgForm->get('recursive'); // чекбокс - рекурсивный показ Faq в дочерних папках, если в них отсутствует свои Faq-и
     $sort = $this->cfgForm->get('sort_field') ?? 'field_sorting';
