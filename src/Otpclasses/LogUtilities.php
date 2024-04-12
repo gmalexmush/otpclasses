@@ -21,7 +21,13 @@ class LogUtilities extends SimpleLogging
     public $oldLogEnable;
     public $dontCuteLog;
     public $activatedCheckCute;
-    public $offsetDebug;
+
+    public $showUser;
+    public $currentUserLogin;
+    public $currentUserName;
+    public $currentUserAuthorized;
+    public $currentUserIdValue;
+    public $logIfRegistered;
 
     function __construct( $logName = '/log_utilities.log', $cuteIdentifier = 'Log_Utilities.', $cuteModule = true, $withOldLog = true )
     {
@@ -44,12 +50,17 @@ class LogUtilities extends SimpleLogging
         $this->oldLogEnable     = $withOldLog;
         $this->SetDontCuteLog( false );
 
+        $this->currentUserAuthorized    = '';
+        $this->currentUserLogin         = '';
+        $this->currentUserName          = '';
+        $this->currentUserIdValue       = false;
+
         $this->activatedCheckCute       = $this->ReadFixedStringFromEOF( $this->fullNameLog, 1 );
 
         if( $this->activatedCheckCute   != '-' && $this->activatedCheckCute != '+' )
             $this->activatedCheckCute   = '-';
 
-        $this->offsetDebug   = 0;
+        $this->logIfRegistered  = false;
     }
 
 
@@ -85,15 +96,15 @@ class LogUtilities extends SimpleLogging
         $this->dontCuteLog      = $enable;
     }
 
-    public function SetOffsetDebug( $varOffsetDebug=0 )  {
-
-        $this->offsetDebug	    = $varOffsetDebug;
-    }
-
     public function SetLoggingIfRegistered( $value = true  ) {
 
       $this->logIfRegistered  = $value;
     }
+
+  public function SetShowUser( $varShowUser=true )  {
+
+    $this->showUser			= $varShowUser;
+  }
 
   public function  logging_debug( $text, $log_debug = false )
     //
@@ -105,6 +116,9 @@ class LogUtilities extends SimpleLogging
 
         if( ! $this->CheckIp() )
             return;
+
+        if( $this->logIfRegistered && empty( $this->currentUserIdValue ) )
+          return;
 
         if( ! $this->IsStarting && ! $this->IsFinish && ! empty( $text ) )
             $this->LoggingStart( $log_debug );
@@ -268,7 +282,7 @@ class LogUtilities extends SimpleLogging
 
     public function MakeStartRecord( $debugLogging=false )
     {
-        $currTime   = $this->offsetDebug * 3600 + time();
+        $currTime   = time();
         $curr_date  = date("d.m.Y H:i:s", $currTime );
 
         $writeText  = '';
@@ -289,6 +303,10 @@ class LogUtilities extends SimpleLogging
                 $writeText  .= ', ' . $currTime;
             }
 
+            if( $this->showUser && $this->currentUserIdValue > 0 ) {
+              $writeText  .= ', ( ' . $this->currentUserIdValue . ' : ' . $this->currentUserLogin . ' : ' . $this->currentUserName . ' : ' . $this->currentUserAuthorized . ' )';
+            }
+
             $this->LoggingInternal( $writeText, $debugLogging );
             $this->WeekDayLogging( $debugLogging );
             $this->showTimeEachRow = true;
@@ -303,6 +321,10 @@ class LogUtilities extends SimpleLogging
 
             if( $this->ShowTimeStamp ) {
                 $writeText  .= ', ' . $currTime;
+            }
+
+            if( $this->showUser && $this->currentUserIdValue > 0 ) {
+              $writeText  .= ', ( ' . $this->currentUserIdValue . ' : ' . $this->currentUserLogin . ' : ' . $this->currentUserName . ' : ' . $this->currentUserAuthorized . ' )';
             }
 
             $this->LoggingInternal( $writeText, $debugLogging );
@@ -363,9 +385,7 @@ class LogUtilities extends SimpleLogging
 
     public function CheckCuteLog( $debugLogging=false )
     {
-        $isCuteTime = $this->IsTimeInPeriod( $this->offsetDebug * 3600 + time(),
-            $this->cuteTimeStart,
-            $this->cuteTimeFinish);
+        $isCuteTime = $this->IsTimeInPeriod( time(), $this->cuteTimeStart, $this->cuteTimeFinish );
 
         $idCute     = $this->cute_identifier;
         $nameCute   = $this->documentRoot . $this->log_folder . $this->log_name;
@@ -388,7 +408,7 @@ class LogUtilities extends SimpleLogging
                         $idCute,
                         $this->log_date_format,
                         $this->num_days_cut,
-                        $this->offsetDebug * 3600 + time(),
+                        time(),
                         $this->logFileSizeLimit,
                         $this->cuteBeModule,
                         $this->oldLogEnable,
@@ -403,7 +423,7 @@ class LogUtilities extends SimpleLogging
                         $idCute,
                         $this->log_date_format,
                         $this->num_days_cut,
-                        $this->offsetDebug * 3600 + time(),
+                        time(),
                         $this->logFileSizeLimit,
                         $this->cuteBeModule,
                         $this->oldLogEnable,
@@ -543,13 +563,6 @@ class LogUtilities extends SimpleLogging
         return( $result );
     }
 
-    public function CurrentBitrixDateTimeString() {
-
-        date_default_timezone_set($this->timeZone);
-
-        return( ConvertTimeStamp( $this->offsetDebug * 3600 + time(), "FULL" ) );
-    }
-
     public function CutFileLog( $file_name, $identifier, $dt_format, $num_days_cut,
                                 $current_date,
                                 $logSizeLimit = 16777216,   // 16*1024*1024 = 16 Mbyte
@@ -610,7 +623,7 @@ class LogUtilities extends SimpleLogging
                 // превышает 86400 секунд, тоесть - сутки )
                 //
                 $fileModifyTime = filemtime($newLogName);
-                $currentDateTime = $this->offsetDebug * 3600 + time();
+                $currentDateTime = time();
                 $logDays = $currentDateTime - $fileModifyTime - 86400;
 
                 $this->logging_debug('Найден недорезанный файл лога! Последняя модификация: ' . ($logDays + 86400) . ' секунд назад.', $debugLogging);
@@ -731,14 +744,14 @@ class LogUtilities extends SimpleLogging
             // загружаем остаток строк лога в буферный массив!
             // в массиве возможно уже содержится найденный усеченный лог который был "потерян"
             //
-            $this->timeStart = $this->offsetDebug * 3600 + time();
+            $this->timeStart = time();
 
             while (($str = fgets($f, $len_buf)) !== false) {
                 $actual_strings [] = $str;
                 $resultFgets = true;
             }
 
-            $this->timeFinish = $this->offsetDebug * 3600 + time();
+            $this->timeFinish = time();
 
             if ($resultFgets) {
                 //

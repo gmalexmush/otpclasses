@@ -2,6 +2,7 @@
 
 namespace Otpclasses\Otpclasses;
 
+use Drupal\Core\Datetime\DrupalDateTime;
 use Otpclasses\Otpclasses\LogUtilities;
 
 class DateUtilities extends LogUtilities
@@ -508,6 +509,61 @@ class DateUtilities extends LogUtilities
       return( $result );
     }
 
+    public function TimeStampToStringForDrupalDataBase( $timeStamp, $format='Y-m-d\TH:i:s' )
+    {
+      try {
+        $now = DrupalDateTime::createFromTimestamp($timeStamp);
+        $now->setTimezone(new \DateTimeZone('UTC'));
+        $stringDate = $now->format($format);
+      } catch ( \Error $e ) {
+        $result = ['errorCode' => $e->getCode(), 'errorMessage' => $e->getMessage()];
+        $this->logging_debug( '' );
+        $this->logging_debug( 'TimeStampToStringForDrupalDataBase Error:' );
+        $this->logging_debug( $result );
+        $this->loggingBackTrace();
+        throw $e;
+      } catch ( \Exception $e ) {
+        $result = ['errorCode' => $e->getCode(), 'errorMessage' => $e->getMessage()];
+        $this->logging_debug( '' );
+        $this->logging_debug( 'TimeStampToStringForDrupalDataBase Exception:' );
+        $this->logging_debug( $result );
+        $this->loggingBackTrace();
+        throw $e;
+      }
 
+      return( $stringDate );
+    }
+
+    public function TimeStampFromStringDateTime( $stringDateTime, $timeZone='UTC' )
+    {
+      $timestamp = 0;
+
+      try {
+        $dateTime   = new DrupalDateTime( $stringDateTime, $timeZone );
+        $timestamp  = $dateTime->getTimestamp();
+      } catch ( \Error $e ) {
+        $result = ['errorCode' => $e->getCode(),
+          'errorMessage' => $e->getMessage(),
+          'stringDateTime' => $stringDateTime,
+          'timestamp' => $timestamp ];
+        $this->logging_debug( '' );
+        $this->logging_debug( 'TimeStampFromStringDateTime Error:' );
+        $this->logging_debug( $result );
+        $this->loggingBackTrace();
+        throw $e;
+      } catch ( \Exception $e ) {
+        $result = ['errorCode' => $e->getCode(),
+          'errorMessage' => $e->getMessage(),
+          'stringDateTime' => $stringDateTime,
+          'timestamp' => $timestamp ];
+        $this->logging_debug( '' );
+        $this->logging_debug( 'TimeStampFromStringDateTime Exception:' );
+        $this->logging_debug( $result );
+        $this->loggingBackTrace();
+        throw $e;
+      }
+
+      return( $timestamp );
+    }
 }
 

@@ -32,15 +32,23 @@ class SimpleLogging
     public $ipClient;
     public $lang;
     public $codeLang;
-    public $sitesBox;
-    public $domain;
+    public $sitesBox; // контейнер с сайтами, в котором первый сайт - всегда текущий!
+    public $domain;   // текущий домен!
 
     function __construct( $logName = '/simple_logging.log' )
     {
-        $this->timeZone = 'Europe/Kiev';
-        $langManager = \Drupal::languageManager();
-        $this->lang  = $langManager->getCurrentLanguage();
-        $this->codeLang = $this->lang->getId();
+      $this->timeZone = 'Europe/Kiev';
+      $this->sitesBox = [];
+
+
+      try {
+          $langManager = \Drupal::languageManager();
+          $this->lang = $langManager->getCurrentLanguage();
+          $this->codeLang = $this->lang->getId();
+        } catch ( \Exception $e) {
+          // Drupal активирован не из под апач ...
+          $this->codeLang = 'uk';
+        }
         //
         // если запуск не из под апача, а из под крона, то это только одно место в DRUPAL:
         //
@@ -55,15 +63,13 @@ class SimpleLogging
 
         } else {
 
-            $this->documentRoot     =  realpath( dirname( __FILE__ ) . "/../../../.." );
+            $this->documentRoot     =  realpath( dirname( __FILE__ ) . "/../../../../../web" );
         }
         $sitesPath = $this->documentRoot . '/sites/sites.php';
         if( is_file( $sitesPath ) )
             include( $sitesPath );  // массив $sites загружается из настроек ДРУПАЛ-а
 
         if( ! empty( $sites ) ) {
-
-          $this->sitesBox = [];
 
           foreach ($sites as $url => $folder) {
 
