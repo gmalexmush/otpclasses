@@ -9,6 +9,7 @@ use Drupal\Core\Datetime\DrupalDateTime;
 use Otpclasses\Otpclasses\DateUtilities;
 use Otpclasses\Otpclasses\LogUtilities;
 use Otpclasses\Otpclasses\MailUtilities;
+use Otpclasses\Otpclasses\FormUtilities;
 use Otpclasses\Otpclasses\CommonDataBox;
 use Otpclasses\Otpclasses\CustomExceptions\FileNotFoundException;
 
@@ -22,6 +23,7 @@ class AgentOptions extends LogUtilities
 		public $showStartedTime;
 		public $mailHandle;
 		public $dateHandle;
+    public $formHandle;
     public $AgentRunning;
     public $agent_user_id;
     public $moduleName;
@@ -127,7 +129,6 @@ class AgentOptions extends LogUtilities
     $this->mailHandle->SetShowTimeEachRow( $this->showTimeEachRow );
     $this->mailHandle->SetLogDateFormat( $this->log_date_format );
     $this->mailHandle->SetNumberDaysCut( $this->num_days_cut );
-    $this->mailHandle->SetCuteTimes( '00:00:00', '00:00:10' );
     $this->mailHandle->SetStarting( true );
 
     $this->dateHandle					= new DateUtilities( $this->log_name, $this->cute_identifier, $cuteModule, $withOldLog );
@@ -135,8 +136,14 @@ class AgentOptions extends LogUtilities
     $this->dateHandle->SetShowTimeEachRow( $this->showTimeEachRow );
     $this->dateHandle->SetLogDateFormat( $this->log_date_format );
     $this->dateHandle->SetNumberDaysCut( $this->num_days_cut );
-    $this->dateHandle->SetCuteTimes( '00:00:00', '00:00:10' );
     $this->dateHandle->SetStarting( true );
+
+    $this->formHandle					= new FormUtilities( $this->log_name, $this->cute_identifier, $cuteModule, $withOldLog );
+    $this->formHandle->SetDontCuteLog( true );
+    $this->formHandle->SetShowTimeEachRow( $this->showTimeEachRow );
+    $this->formHandle->SetLogDateFormat( $this->log_date_format );
+    $this->formHandle->SetNumberDaysCut( $this->num_days_cut );
+    $this->formHandle->SetStarting( true );
 
 		$this->showStartedTime		   = false;
 		$this->useDateCikle			   = false;
@@ -566,11 +573,15 @@ class AgentOptions extends LogUtilities
 		$result = [];
 //      $this->logging_debug( "Box:" );
 //      $this->logging_debug( $box );
+    if( !empty( $box ) ) {
+      foreach ($box as $key => $item) {
 
-		foreach( $box as $key => $item ) {
+        if( empty( $item ) || empty( $item['max'] ) || empty( $item['val'] ) )
+          continue;
 
-			$result [] = $item['max'] . $delimiter . $item['val'];
-		}
+        $result [] = $item['max'] . $delimiter . $item['val'];
+      }
+    }
 
 		return( $result );
 	}
@@ -1086,6 +1097,7 @@ class AgentOptions extends LogUtilities
     // Установить следующее время старта с реальной записью в базу данных в инфоблок: agents, элемент: $this->optionElementCode
     //
     //  https://www.colinbusby.com/posts/entitytypemanager-querying-nodes
+    //  https://gorannikolovski.com/blog/set-date-field-programmatically
     //
   {
     $result = true;
@@ -1738,6 +1750,10 @@ class AgentOptions extends LogUtilities
       $mailFrom = \Drupal::config('system.site')->get('mail');
     }
 
+//  $this->logging_debug( '' );
+//  $this->logging_debug( 'Mail message:' );
+//  $this->logging_debug( $message );
+
 		$result	= $this->mailHandle->SendMail(
 		  $message, $subject,
 			$mailTo, $mailFrom, $mailCc,$mailBcc,
@@ -1797,6 +1813,9 @@ class AgentOptions extends LogUtilities
 			} else {
 				$emailParam	= $paramEmail;
 			}
+
+//    $this->logging_debug('emailParam:');
+//    $this->logging_debug( $emailParam );
 
 			$resultSend = $this->SendMail(
 				$emailParam['MESSAGE'],

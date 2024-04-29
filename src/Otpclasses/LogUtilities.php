@@ -1,6 +1,7 @@
 <?php
 namespace Otpclasses\Otpclasses;
 
+use Drupal\user\Entity\User;
 use Otpclasses\Otpclasses\SimpleLogging;
 use Otpclasses\Otpclasses\XMLUtility;
 use \FluidXml\FluidXml;
@@ -23,6 +24,7 @@ class LogUtilities extends SimpleLogging
     public $activatedCheckCute;
 
     public $showUser;
+    public $isAnonymouse;
     public $currentUserLogin;
     public $currentUserName;
     public $currentUserAuthorized;
@@ -50,10 +52,14 @@ class LogUtilities extends SimpleLogging
         $this->oldLogEnable     = $withOldLog;
         $this->SetDontCuteLog( false );
 
-        $this->currentUserAuthorized    = '';
-        $this->currentUserLogin         = '';
-        $this->currentUserName          = '';
-        $this->currentUserIdValue       = false;
+        $this->showUser                 = false;
+//      $this->objUser = \Drupal\user\Entity\User::load( $this->currentUserIdValue );
+
+        $this->isAnonymouse             = \Drupal::currentUser()->isAnonymous();
+        $this->currentUserIdValue       = \Drupal::currentUser()->id();
+        $this->currentUserAuthorized    = \Drupal::currentUser()->isAuthenticated();
+        $this->currentUserLogin         = \Drupal::currentUser()->getAccountName();
+        $this->currentUserName          = \Drupal::currentUser()->getDisplayName();
 
         $this->activatedCheckCute       = $this->ReadFixedStringFromEOF( $this->fullNameLog, 1 );
 
@@ -303,8 +309,13 @@ class LogUtilities extends SimpleLogging
                 $writeText  .= ', ' . $currTime;
             }
 
-            if( $this->showUser && $this->currentUserIdValue > 0 ) {
-              $writeText  .= ', ( ' . $this->currentUserIdValue . ' : ' . $this->currentUserLogin . ' : ' . $this->currentUserName . ' : ' . $this->currentUserAuthorized . ' )';
+            if( $this->showUser ) {
+              if ( $this->currentUserIdValue > 0) {
+                $writeText .= ', ( ' . $this->currentUserIdValue . ' : ' . $this->currentUserLogin . ' : ' . $this->currentUserName . ' : ' . $this->currentUserAuthorized . ' )';
+              } else {
+                if( $this->isAnonymouse )
+                  $writeText .= ', ( anonymouse )';
+              }
             }
 
             $this->LoggingInternal( $writeText, $debugLogging );
@@ -323,8 +334,13 @@ class LogUtilities extends SimpleLogging
                 $writeText  .= ', ' . $currTime;
             }
 
-            if( $this->showUser && $this->currentUserIdValue > 0 ) {
-              $writeText  .= ', ( ' . $this->currentUserIdValue . ' : ' . $this->currentUserLogin . ' : ' . $this->currentUserName . ' : ' . $this->currentUserAuthorized . ' )';
+            if( $this->showUser ) {
+              if( $this->currentUserIdValue > 0) {
+                $writeText .= ', ( ' . $this->currentUserIdValue . ' : ' . $this->currentUserLogin . ' : ' . $this->currentUserName . ' : ' . $this->currentUserAuthorized . ' )';
+              } else {
+                if( $this->isAnonymouse )
+                  $writeText .= ', ( anonymouse )';
+              }
             }
 
             $this->LoggingInternal( $writeText, $debugLogging );

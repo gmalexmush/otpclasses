@@ -32,6 +32,7 @@ class SimpleLogging
     public $ipClient;
     public $lang;
     public $codeLang;
+    public $captionLang;
     public $sitesBox; // контейнер с сайтами, в котором первый сайт - всегда текущий!
     public $domain;   // текущий домен!
 
@@ -45,9 +46,15 @@ class SimpleLogging
           $langManager = \Drupal::languageManager();
           $this->lang = $langManager->getCurrentLanguage();
           $this->codeLang = $this->lang->getId();
+          $this->error = 'код языка определен без ошибок.';
         } catch ( \Exception $e) {
           // Drupal активирован не из под апач ...
           $this->codeLang = 'uk';
+          $this->error = 'exception';
+        } catch ( \Error $e) {
+          // Drupal активирован не из под апач ...
+          $this->codeLang = 'uk';
+          $this->error = 'error';
         }
         //
         // если запуск не из под апача, а из под крона, то это только одно место в DRUPAL:
@@ -76,9 +83,10 @@ class SimpleLogging
             $langCaption = mb_substr($folder, 1);
             $language = ($langCaption == 'ua') ? 'uk' : $langCaption;
 
-            if ($this->codeLang == $language) {
+            if ( $language == $this->codeLang ) {
               // определили текущий язык, а значит и текущий сайт
               $this->domain = $url;
+              $this->captionLang = $langCaption;
               $this->sitesBox[] = ['folder'=>$folder, 'domain'=>$url, 'lang'=>$language];  // всегда первым в массиве!
               break;
             }
@@ -89,9 +97,8 @@ class SimpleLogging
             $langCaption = mb_substr($folder, 1);
             $language = ($langCaption == 'ua') ? 'uk' : $langCaption;
 
-            if ($this->domain != $url) {
+            if ( $url != $this->domain ) {
               // этого домена в массиве еще нет - добавдяем
-              $this->domain = $url;
               $this->sitesBox[] = ['folder'=>$folder, 'domain'=>$url, 'lang'=>$language];
             }
           }
