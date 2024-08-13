@@ -9,116 +9,130 @@ use Drupal\Core\Site\Settings;
 class UrlUtilities extends LogUtilities
 {
 
-    public  $CurrentSection;
-    public  $LengthCurrentSection;
-    public  $defaultIsHttps;        // если не можем определить протокол никакими способами, то берем значение по умолчанию!
+  public $CurrentSection;
+  public $LengthCurrentSection;
+  public $defaultIsHttps;        // если не можем определить протокол никакими способами, то берем значение по умолчанию!
 
-    public function __construct( $logName = '/urlutilities.log', $cuteIdentifier = 'UrlUtilities.', $cuteModule = true, $withOldLog = true  ) {
+  public function __construct($logName = '/urlutilities.log', $cuteIdentifier = 'UrlUtilities.', $cuteModule = true, $withOldLog = true)
+  {
 
-        $this->defaultIsHttps       = true;         // по умолчанию считаем протокол: HTTPS
-        $this->init();
+    $this->defaultIsHttps = true;         // по умолчанию считаем протокол: HTTPS
+    $this->init();
 
-        parent::__construct( $logName, $cuteIdentifier, $cuteModule, $withOldLog );
-    }
+    parent::__construct($logName, $cuteIdentifier, $cuteModule, $withOldLog);
+  }
 
-    public function __destruct() {
+  public function __destruct()
+  {
 
-        parent::__destruct();
-    }
+    parent::__destruct();
+  }
 
-    public function init() {
-        $this->CurrentSection       = '';
-        $this->LengthCurrentSection = 0;
-    }
+  public function init()
+  {
+    $this->CurrentSection = '';
+    $this->LengthCurrentSection = 0;
+  }
 
-    //
-    // в массиве $listExclude ищется текущая папка: $PathUrl.
-    // каждый элемент массива проверяется на вхождение в $PathUrl.
-    // если в текущем URI найдено хотя-бы одно вхожджение строк (папок) из $listExclude,
-    // то:  return true, иначе: return false.
-    //
-    public function IsExcludePage( $listExclude ) {
+  //
+  // в массиве $listExclude ищется текущая папка: $PathUrl.
+  // каждый элемент массива проверяется на вхождение в $PathUrl.
+  // если в текущем URI найдено хотя-бы одно вхожджение строк (папок) из $listExclude,
+  // то:  return true, иначе: return false.
+  //
+  public function IsExcludePage($listExclude)
+  {
 
-        $PathUrl        = parse_url( $_SERVER['REQUEST_URI'], PHP_URL_PATH );
+    $PathUrl = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 
 //      $this->logging_debug( 'Current page: ' . $PathUrl );
 
-        $isExclude      = false;
+    $isExclude = false;
 
-        foreach($listExclude as $exclude) {
+    foreach ($listExclude as $exclude) {
 
-            $isExclude  = mb_strpos( $PathUrl, $exclude );
-            if( $isExclude !== false )
-                break;
-        }
-
-        return( $isExclude );
+      $isExclude = mb_strpos($PathUrl, $exclude);
+      if ($isExclude !== false)
+        break;
     }
 
-    public function ProtocolHTTPS() {
+    return ($isExclude);
+  }
 
-        $resultHttps    = false;
-        $protocol       = Settings::get('SITE_PROTOCOL');
+  public function ProtocolHTTPS()
+  {
 
-        if( ! empty( $protocol ) ) {
+    $resultHttps = false;
+    $protocol = Settings::get('SITE_PROTOCOL');
 
-          $protocol = mb_strtoupper( $protocol );
-          if( $protocol == 'HTTPS' )
-            $isHttps = true;
-          else
-            $isHttps = false;
+    if (!empty($protocol)) {
 
-        } else {
-          $isHttps = false;
-        }
+      $protocol = mb_strtoupper($protocol);
+      if ($protocol == 'HTTPS')
+        $isHttps = true;
+      else
+        $isHttps = false;
+
+    } else {
+      $isHttps = false;
+    }
 
 //      $this->logging_debug( 'empty isHttps!' );
-        if( empty( $isHttps ) ) {
-            if( isset($_SERVER['HTTPS']) || isset($_SERVER['SERVER_PORT'])) {
+    if (empty($isHttps)) {
+      if (isset($_SERVER['HTTPS']) || isset($_SERVER['SERVER_PORT'])) {
 
-              if( isset($_SERVER['HTTPS']) ) {
+        if (isset($_SERVER['HTTPS'])) {
 
-                $resultHttps = empty( $_SERVER['HTTPS'] ) ? false : true;
+          $resultHttps = empty($_SERVER['HTTPS']) ? false : true;
 //              $this->logging_debug( 'Is $_SERVER[ HTTPS ] !' );
-              } else {
-                $resultHttps = ( $_SERVER['SERVER_PORT'] == "443") ? true : false;
+        } else {
+          $resultHttps = ($_SERVER['SERVER_PORT'] == "443") ? true : false;
 //              $this->logging_debug( 'Is $_SERVER[ SERVER_PORT ] !' );
-              }
+        }
 
-            } else {
-                $resultHttps = $this->defaultIsHttps;
+      } else {
+        $resultHttps = $this->defaultIsHttps;
 //              $this->logging_debug( 'empty $_SERVER[ HTTPS ] and $_SERVER[ SERVER_PORT ] !' );
-            }
-        } else {
+      }
+    } else {
 
-          $resultHttps = $isHttps ? true : false;
-        }
-
-        $Protocol   = $resultHttps ? "https://" : "http://";
-
-        return( $Protocol );
+      $resultHttps = $isHttps ? true : false;
     }
 
+    $Protocol = $resultHttps ? "https://" : "http://";
+
+    return ($Protocol);
+  }
 
 
-    public function CurrentPath( $currentURL = false ) {
+  public function CurrentPath($currentURL = false)
+  {
 
-        if( empty( $currentURL ) ) {
+    if (empty($currentURL)) {
 
-            $PathUrl = parse_url( $_SERVER['REQUEST_URI'], PHP_URL_PATH );
+      $PathUrl = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 
-        } else {
+    } else {
 
-            $PathUrl = parse_url($currentURL, PHP_URL_PATH);
-        }
-
-        if( mb_substr( $PathUrl, -1 ) != '/' )
-            $PathUrl    = $PathUrl . '/';
-
-        return( $PathUrl );
+      $PathUrl = parse_url($currentURL, PHP_URL_PATH);
     }
 
+    if (mb_substr($PathUrl, -1) != '/')
+      $PathUrl = $PathUrl . '/';
 
+    return ($PathUrl);
+  }
+
+
+  public function CurrentHostDrupal()
+    //
+    // возвращает:  https://current_host
+    //
+  {
+      $host = \Drupal::request()->getSchemeAndHttpHost();
+
+      return( $host );
+  }
 
     public function CurrentHost( $currentURL = false )
     {

@@ -82,6 +82,78 @@ class DrupalUtilities extends StringUtilities
       return( $result );
     }
 
+
+    public function LoadMediaImageWithInfo( $box, & $boxImage, $fieldImage, $fieldAlt='', $fieldTitle='' )
+    {
+      $result = [ 'errorCode' => -1 ]; // ошибка
+
+      if( !empty( $box[ $fieldImage ] ) && !empty( $box[$fieldImage][0]['target_id'] ) ) {
+
+        try {
+          $media = Media::load($box[$fieldImage][0]['target_id']);
+
+          if( !empty( $media ) ) {
+            $boxMedia = $media->toArray();
+            $meta = $boxMedia['thumbnail'][0];
+
+//        $this->logging_debug( '' );
+//        $this->logging_debug( 'media:' );
+//        $this->logging_debug( $boxMedia );
+//        $this->logging_debug( '' );
+
+            if (!empty($media)) {
+              $fid = $media->getSource()->getSourceFieldValue($media);
+              $file = File::load($fid);
+
+              if (!empty($file)) {
+                $imgUri = $file->getFileUri();
+                $imgSrc = \Drupal::service('file_url_generator')->generateString( $imgUri );
+                $streamWrapperManager = \Drupal::service('stream_wrapper_manager')->getViaUri($imgUri);
+                $fileRealPath = $streamWrapperManager->realpath();
+//              $this->logging_debug( '' );
+//              $this->logging_debug( 'fileRealPath: ' . $fileRealPath );
+
+                if (!empty($fieldAlt))
+                  $imgAlt = $box[$fieldAlt][0]['value'];
+                else
+                  $imgAlt = empty($meta) ? $file->label() : $meta['alt'];
+
+                if (!empty($fieldTitle))
+                  $imgTitle = $box[$fieldTitle][0]['value'];
+                else
+                  $imgTitle = empty($meta) ? $file->label() : $meta['alt'];
+
+                $imageInfo  = getimagesize( $fileRealPath );
+
+                $boxImage = [
+                  'show' => 'Y',
+                  'src' => $imgSrc,
+                  'alt' => $imgAlt,
+                  'title' => $imgTitle,
+                  'width' => $imageInfo[0],
+                  'height' => $imageInfo[1]
+                ];
+
+                $result = [];
+              }
+            }
+          }
+
+        } catch( \Exception $e ) {
+
+          $result = ['errorCode' => $e->getCode(), 'errorMessage' => $e->getMessage()];
+          $this->logging_debug( '' );
+          $this->logging_debug( 'Exception:' );
+          $this->logging_debug( $result );
+        }
+      }
+
+
+      return( $result );
+    }
+
+
+
     public function LoadMediaImageFromRow( &$imgSrc, &$imgAlt, &$imgTitle,
                                             $box, $fieldImage,
                                             $fieldAlt='', $fieldTitle='' )
@@ -111,7 +183,12 @@ class DrupalUtilities extends StringUtilities
               $file = File::load($fid);
 
               if (!empty($file)) {
-                $imgSrc = \Drupal::service('file_url_generator')->generateString($file->getFileUri());
+                $imgUri = $file->getFileUri();
+                $imgSrc = \Drupal::service('file_url_generator')->generateString( $imgUri );
+                $streamWrapperManager = \Drupal::service('stream_wrapper_manager')->getViaUri($imgUri);
+                $fileRealPath = $streamWrapperManager->realpath();
+//              $this->logging_debug( '' );
+//              $this->logging_debug( 'fileRealPath: ' . $fileRealPath );
 
                 if (!empty($fieldAlt))
                   $imgAlt = $box[$fieldAlt][0]['value'];
@@ -450,6 +527,8 @@ class DrupalUtilities extends StringUtilities
             $boxResult [] = $item;
           }
         }
+        $result = [];
+
       } catch( \Exception $e ) {
 
         $result = ['errorCode' => $e->getCode(), 'errorMessage' => $e->getMessage()];
