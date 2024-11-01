@@ -306,7 +306,8 @@ class DrupalUtilities extends StringUtilities
                                                 $height=500,
                                                 $fieldCaption='',
                                                 $imgClass='',
-                                                $imgClassAddon='' )
+                                                $imgClassAddon='',
+                                                $imgDefault='' )
   {
     //
     // загрузка нескольких картинок (тип MEDIA) для БАННЕРА из резалт-сета ( параметр: $box )
@@ -322,11 +323,15 @@ class DrupalUtilities extends StringUtilities
       $bannerImgClass .= ' ' . $imgClassAddon;
 
 
-    if( ! empty( $box[ $fieldImage ] ) ) {
+    if( ! empty( $box ) && ! empty( $box[ $fieldImage ] ) ) {
 
       try {
 
         foreach ($box[$fieldImage] as $iconItem) {
+
+//        $this->logging_debug( '' );
+//        $this->logging_debug( 'iconItem:' );
+//        $this->logging_debug( $iconItem );
 
           $media = Media::load($iconItem['target_id']);
 
@@ -363,11 +368,7 @@ class DrupalUtilities extends StringUtilities
                 $width     = empty( $widthFromImage ) ? $widthDefault : $widthFromImage;
                 $height    = empty( $heightFromImage ) ? $heightDefault : $heightFromImage;
               }
-/*
-              $htmlBanner = "<img alt=\"" . $media->label() . "\" imgtype=\"banner\" src=\"" .
-                            $url . "\" style=\"border: 0;\" width=\"" .
-                            $width . "\" height=\"" . $height . "\" class=\"" . $bannerImgClass . "\">";
-*/
+
               $images [] = [
                 'file_id' => $file->id(),
                 'created' => date('d-m-Y', $file->getCreatedTime()),
@@ -378,42 +379,20 @@ class DrupalUtilities extends StringUtilities
                 'alt' => $media->label(),
                 'width' => $width,
                 'height' => $height,
-//              'body' => $htmlBanner,
                 'mime' => $file->getMimeType()
               ];
 
               $result = [];
             }
+          } else {
+//          $this->logging_debug( '' );
+//          $this->logging_debug( 'empty media!' );
           }
         }
 
-        if( ! empty( $fieldCaption ) ) {
-
-          for( $i=0; $i < count( $box[ $fieldCaption ] ); $i++ ) {
-            $caption = $box[$fieldCaption][$i]['value'];
-            if( ! empty( $images[$i] ) )
-              $images[$i]['caption'] = $caption;
-          }
-        }
-
-        $htmlBanner = '';
-
-        foreach ( $images as $img ) {
-
-          if( ! empty( $img['caption'] ) )
-            $title = ' title="' . $img['caption'] . '"';
-          else
-            $title = '';
-
-          $htmlBanner .= "<img alt=\"" . $img['alt'] . "\" imgtype=\"banner\" src=\"" .
-            $img['url'] . "\" style=\"border: 0;\" width=\"" .
-            $img['width'] . "\" height=\"" . $img['height'] . "\" class=\"" . $bannerImgClass . "\"" . $title . ">";
-        }
-
-        $imgBox = [
-          'body' => $htmlBanner,
-          'images' => $images
-        ];
+//      $this->logging_debug( '' );
+//      $this->logging_debug( 'images:' );
+//      $this->logging_debug( $images );
 
       } catch( \Exception $e ) {
 
@@ -421,7 +400,59 @@ class DrupalUtilities extends StringUtilities
         $this->logging_debug( '' );
         $this->logging_debug( 'Exception:' );
         $this->logging_debug( $result );
+      } catch( \Error $e ) {
+
+        $result = ['errorCode' => $e->getCode(), 'errorMessage' => $e->getMessage()];
+        $this->logging_debug( '' );
+        $this->logging_debug( 'Error:' );
+        $this->logging_debug( $result );
       }
+    }
+
+    if( empty( $images ) && ! empty( $imgDefault ) ) {
+
+//    $this->logging_debug( '' );
+//    $this->logging_debug( 'empty images!' );
+
+      $images [] = [
+        'alt' => '',
+        'url' => $imgDefault,
+        'width' => $width,
+        'height' => $height
+      ];
+
+      $result = [];
+    }
+
+    if( !empty( $images ) ) {
+
+      if (!empty($fieldCaption)) {
+
+        for ($i = 0; $i < count($box[$fieldCaption]); $i++) {
+          $caption = $box[$fieldCaption][$i]['value'];
+          if (!empty($images[$i]))
+            $images[$i]['caption'] = $caption;
+        }
+      }
+
+      $htmlBanner = '';
+
+      foreach ($images as $img) {
+
+        if (!empty($img['caption']))
+          $title = ' title="' . $img['caption'] . '"';
+        else
+          $title = '';
+
+        $htmlBanner .= "<img alt=\"" . $img['alt'] . "\" imgtype=\"banner\" src=\"" .
+          $img['url'] . "\" style=\"border: 0;\" width=\"" .
+          $img['width'] . "\" height=\"" . $img['height'] . "\" class=\"" . $bannerImgClass . "\"" . $title . ">";
+      }
+
+      $imgBox = [
+        'body' => $htmlBanner,
+        'images' => $images
+      ];
     }
 
     return( $result );
@@ -429,8 +460,33 @@ class DrupalUtilities extends StringUtilities
 
 
 
-    public function LoadByReferencedId( & $boxResult, $type, $boxId, $boxFields=[], $fieldImage='',
+
+    public function LoadMultyTypeByReferencedId( & $boxResult, $boxType, $boxId, $boxFields=[], $fieldImage='',
+                                      $sort='field_sorting', $sortDirection='asc', $entity='node', $status=1 )
+      //
+      // Вызывает метод LoadByReferencedId несколько раз, т.е. для каждого из перечисленных типов инфоблока в $boxType
+      //
+      // возвращает пусто, если успех. иначе код ошибки.
+      //
+    {
+      $result = [ 'errorCode' => -1 ]; // ошибка
+
+      foreach( $boxType as $type ) {
+        if( ! empty( $boxId ) )
+          $result = $this->LoadByReferencedId( $boxResult, $type, $boxId, $boxFields, $fieldImage, $sort, $sortDirection, $entity, $status );
+
+        if( ! empty( $result ) )
+          break;
+      }
+
+      return( $result );
+    }
+
+
+    public function LoadByReferencedId( & $boxResult, $type, & $boxId, $boxFields=[], $fieldImage='',
                                         $sort='field_sorting', $sortDirection='asc', $entity='node', $status=1 )
+      //
+      // использованный ID удаляется из $boxId !
       //
       // $boxResult =
       // [ 0 =>
@@ -464,14 +520,31 @@ class DrupalUtilities extends StringUtilities
           $data = \Drupal\node\Entity\Node::loadMultiple($nids);
 
         if (!empty($data)) {
+
+//        $this->logging_debug( 'boxId:' );
+//        $this->logging_debug( $boxId );
+
           foreach ($data as $node) {
 
             $resultSet = $node->toArray();
             $item = [];
             $item = [
-              'title' => $resultSet['title'][0]['value'],
+              'title' => $resultSet['title'][0]['value']
             ];
+            //
+            // найти м удалить использованный ID
+            //
+            $idRow = $resultSet['nid'][0]['value'];
+            $indexFind = array_search( $idRow, $boxId );
+            if( $indexFind !== false ) {
 
+              array_splice($boxId, $indexFind, 1);
+//            $boxId[ $indexFind ] = 0;
+
+//            $this->logging_debug( 'boxId:' );
+//            $this->logging_debug( $boxId );
+            }
+            //
             if( ! empty( $fieldImage ) ) {
               $media = Media::load( $resultSet[ $fieldImage ][0]['target_id'] );
               $boxMedia = $media->toArray();
@@ -622,7 +695,11 @@ class DrupalUtilities extends StringUtilities
     return( $result );
   }
 
-  public function ReversalSearchFolderInURI( &$items, $data, $uri, $useRecursive, $foldersField, $uriField, $pluginLoadingDataRow ) {
+  public function ReversalSearchFolderInURI( &$items, $data, $uri, $useRecursive, $foldersField, $uriField, $pluginLoadingDataRow )
+  //
+  // $uriField - имя ключа в массиве: $items по которому отдается значение текущего URI
+  //
+  {
 
     $result = [];
     $dataNodes = [];

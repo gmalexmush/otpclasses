@@ -466,7 +466,14 @@ class DateUtilities extends LogUtilities
         return( $result );
     }
 
-    public function i18nDateFormat( $format, $currentTime, $codeLang='ru' ) {
+    public function i18nDateFormat( $format, $currentTime, $codeLang='ru' )
+    //
+    //
+    // $format: это не формат date, это немного другой формат.
+    //          описан тут: https://unicode-org.github.io/icu/userguide/format_parse/datetime/
+    // пример:  'dd MMMM yyyy'
+    //
+    {
 
       $upperLang = mb_strtoupper( $codeLang );
 
