@@ -23,6 +23,7 @@ class SimpleLogging
     public $documentRoot;
     public $documentRootCheck;
     public $eol;
+    public $returnCaret;
 
     public $fullFolderName;
     public $fullNameLog;
@@ -115,6 +116,7 @@ class SimpleLogging
         $this->log_name         = $logName;
         $this->log_folder       = "/otp_logs";
         $this->eol              = "\r\n";
+        $this->returnCaret      = "\n";
         $this->debugPrefix      = '-debug';
         $this->fullFolderName	= $this->documentRoot . '/sites/' . $this->sitesBox[0]['folder'] . $this->log_folder;
         $this->fullNameLog		= $this->fullFolderName . $this->log_name;

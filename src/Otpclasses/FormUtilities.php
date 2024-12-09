@@ -7,6 +7,11 @@ use Otpclasses\Otpclasses\DateUtilities;
 use Drupal\webform\Entity\Webform;
 use Drupal\webform\Entity\WebformSubmission;
 use Drupal\webform\WebformSubmissionForm;
+use Drupal\webform\Utility\WebformOptionsHelper;
+use Drupal\webform\Element\WebformEntityTrait;
+use Drupal\webform\Plugin\WebformElement;
+use Drupal\webform\Plugin\WebformElementBase;
+use Drupal\webform\Plugin\WebformElementInterface;
 
 class FormUtilities extends LogUtilities
 {
@@ -32,11 +37,11 @@ class FormUtilities extends LogUtilities
 
 
 
-    public function LoadResultData( $idForm, $packSize, $selectFields, $hostReferer, & $boxFields=[] )
+    public function LoadResultData( $idForm, $packSize, $boxFilter, $hostReferer, & $boxFields=[] )
     //
     // Чтение данных результатов формы.
     //
-    // $fields = [
+    // $boxFilter = [
     //  'name' => 'field_Name',
     //  'value' => 'field_Value',
     //  'sort' => 'field_Sort',
@@ -47,15 +52,49 @@ class FormUtilities extends LogUtilities
       $results = [];
 
       try {
-//      $webform = Webform::load( $idForm );
+        $webform = Webform::load( $idForm );
 
         $database = \Drupal::service('database');
-        $select = $database->select('webform_submission_data', 'wsd')
-          ->fields('wsd', ['sid'])
-          ->condition('wsd.webform_id', $idForm, '=')
-          ->condition('wsd.name', $selectFields['name'], '=')
-          ->condition('wsd.value', $selectFields['value'], '=')
-          ->orderBy( 'wsd.' . $selectFields['sort'], $selectFields['order']);
+
+        if( is_array( $boxFilter['value'] ) ) {
+          if( count( $boxFilter['value'] ) > 1 ) {
+
+            $conditionOr = new \Drupal\Core\Database\Query\Condition('OR');
+
+            foreach ( $boxFilter['value'] as $value ) {
+              $conditionOr->condition('wsd.value', $value, '=');
+            }
+
+            $select = $database->select('webform_submission_data', 'wsd')
+              ->fields('wsd', ['sid'])
+              ->condition('wsd.webform_id', $idForm, '=')
+              ->condition('wsd.name', $boxFilter['name'], '=')
+              ->condition($conditionOr)
+              ->orderBy( 'wsd.' . $boxFilter['sort'], $boxFilter['order']);
+
+          } else {
+            $conditionValue = $boxFilter['value'][0];
+
+            $select = $database->select('webform_submission_data', 'wsd')
+              ->fields('wsd', ['sid'])
+              ->condition('wsd.webform_id', $idForm, '=')
+              ->condition('wsd.name', $boxFilter['name'], '=')
+              ->condition('wsd.value', $conditionValue, '=' )
+              ->orderBy( 'wsd.' . $boxFilter['sort'], $boxFilter['order']);
+          }
+
+        } else {
+          $conditionValue = $boxFilter['value'];
+
+          $select = $database->select('webform_submission_data', 'wsd')
+            ->fields('wsd', ['sid'])
+            ->condition('wsd.webform_id', $idForm, '=')
+            ->condition('wsd.name', $boxFilter['name'], '=')
+            ->condition('wsd.value', $conditionValue, '=' )
+            ->orderBy( 'wsd.' . $boxFilter['sort'], $boxFilter['order']);
+
+//        $this->logging_debug('conditionValue: ' . $conditionValue );
+        }
 
         $executed = $select->execute();
         // Get all the results.
@@ -68,7 +107,9 @@ class FormUtilities extends LogUtilities
 
           $i = 0;
           foreach ($sids as $sid) {
-
+            //
+            // $sid содержит типа [ "sid": "103" ]
+            //
             $submissionObject = \Drupal\webform\Entity\WebformSubmission::load($sid['sid']);
 
             $box = $submissionObject->toArray();
@@ -76,6 +117,51 @@ class FormUtilities extends LogUtilities
 //          $this->logging_debug( '' );
 //          $this->logging_debug( 'submissionObject:' );
 //          $this->logging_debug( $box );
+
+            $data = $submissionObject->getData();
+
+//          $this->logging_debug( '' );
+//          $this->logging_debug( 'data:' );
+//          $this->logging_debug( $data );
+
+            foreach ( $data as $fieldName => &$fieldValue ) {
+              $element = $webform->getElement( $fieldName );
+
+//          $this->logging_debug( '' );
+//          $this->logging_debug( 'agreement type: ' . $element['#type'] );
+
+//          $this->logging_debug( '' );
+//          $this->logging_debug( 'agreement properties:' );
+//          $this->logging_debug( $elementProperties );
+              WebformEntityTrait::setOptions( $element );
+              if( isset( $element['#options'] ) ) {
+
+                $previousValue = $fieldValue;
+                $value = WebformOptionsHelper::getOptionsText( (array) $fieldValue, $element['#options'] );
+
+//              $this->logging_debug( '' );
+//              $this->logging_debug( $fieldName . ':' );
+//              $this->logging_debug( $value );
+
+                if(count($value) > 1) {
+
+                  $fieldValue = [
+                    'type'  => $element['#type'],
+                    'value' => $previousValue,
+                    'caption' => $value
+                  ];
+
+                } elseif( count($value) === 1) {
+
+                  $fieldValue = [
+                    'type'  => $element['#type'],
+                    'value' => $previousValue,
+                    'caption' => reset($value)
+                  ];
+
+                }
+              }
+            }
 
             $results[] = [
               'id' => $submissionObject->id(),
@@ -86,7 +172,7 @@ class FormUtilities extends LogUtilities
               'completed' => date( 'd.m.Y H:i:s', $box['completed'][0]['value'] ),
               'changed' => date( 'd.m.Y H:i:s', $box['changed'][0]['value'] ),
               'user_id' => $box['uid'][0]['target_id'],
-              'fields' => $submissionObject->getData()
+              'fields' => $data
             ];
             $i++;
 

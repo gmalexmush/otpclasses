@@ -124,7 +124,7 @@ class AgentOptions extends LogUtilities
 		$this->SetDontCuteLog( true );
     $this->SetCuteTimes( '00:00:00', '00:00:10' );
 
-    $this->mailHandle					= new MailUtilities( false, $this->log_name, $this->cute_identifier, $cuteModule, $withOldLog );
+    $this->mailHandle					= new MailUtilities( $this->log_name, $this->cute_identifier, $cuteModule, $withOldLog );
     $this->mailHandle->SetDontCuteLog( true );
     $this->mailHandle->SetShowTimeEachRow( $this->showTimeEachRow );
     $this->mailHandle->SetLogDateFormat( $this->log_date_format );
@@ -276,10 +276,12 @@ class AgentOptions extends LogUtilities
 
       try {
 
-        $path = $this->documentRoot . '/sites/' . $this->sitesBox[0]['folder'] . '/agents/' . $moduleName . '/' . $settingsFileName;
+//      $path = $this->documentRoot . '/sites/' . $this->sitesBox[0]['folder'] . '/agents/' . $moduleName . '/' . $settingsFileName;
+        $path = $this->documentRoot . '/../private/agents/' . $moduleName . '/' . $settingsFileName;
 
         if( file_exists( $path ) ) {
           $result = realpath( $path );
+          $this->logging_debug( 'Settings file path: ' . $result );
         } else {
           throw new FileNotFoundException( 'File not found.', 100 );
         }
@@ -1768,10 +1770,9 @@ class AgentOptions extends LogUtilities
 
 
 
-	public function SendAdminMessagePeriodically( $CurrentModuleId, $subject, $titleEmail, $msgEmail, $paramEmail=[], $force=false )
+	public function SendAdminMessagePeriodically( $subject, $msgEmail, $force=false )
 		//
 		// Периодическая отправка сообщений админу ( раз в заданный период ), чтобы не валило кулем ...
-		// если массив $emailParam должен быть более расширенно заполнен, то он передается в парметре: $paramEmail
 		//
 	{
 
@@ -1797,29 +1798,9 @@ class AgentOptions extends LogUtilities
 				'BCC' => $localEmailBCC
 			];
 
-			if( empty( $paramEmail ) ) {
-
-				$emailParam = [
-					'SUBJECT' => $subject,
-					'SERVER_NAME' => SITE_SERVER_NAME,
-					'DATE_CREATE_EMAIL' => date("d.m.Y"),
-					'DATETIME_CREATE_EMAIL' => date("d.m.Y H:i:s"),
-					'RS_USER_AUTH' => '(Не авторизован)',
-					'REGISTERED' => '(Не зарегистрирован)',
-					'MODULE' => $CurrentModuleId,
-					'TITLE' => $titleEmail,
-					'MESSAGE' => $msgEmail
-				];
-			} else {
-				$emailParam	= $paramEmail;
-			}
-
-//    $this->logging_debug('emailParam:');
-//    $this->logging_debug( $emailParam );
-
 			$resultSend = $this->SendMail(
-				$emailParam['MESSAGE'],
-        $emailParam['SUBJECT'],
+        $msgEmail,
+        $subject,
 				$templateBox['EMAIL_TO'],
         $templateBox['EMAIL_FROM'],
 				$templateBox['CC'],
@@ -1834,13 +1815,19 @@ class AgentOptions extends LogUtilities
 		} else {
 
 			$this->logging_debug( 'Время отправки почтового сообщения еще не наступило, ждем ' . $secondsLeft . ' секунд! Последняя отправка была: ' . date( "d-m-Y H:i:s", $datetimeLastMailSend ) );
-			$this->logging_debug( $titleEmail );
 			$this->logging_debug( $msgEmail );
 		}
 
 		return( $resultSend );
 	}
 
+
+  public function UserName( $id ) {
+    $account = \Drupal\user\Entity\User::load( $id );
+    $name = $account->getAccountName();
+
+    return( $name );
+  }
 
 }
 ?>

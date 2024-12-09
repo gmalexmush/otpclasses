@@ -8,39 +8,19 @@ use Otpclasses\Otpclasses\Gumlet\ImageResizeException;
 
 class MailUtilities extends LogUtilities
 {
-    public $logEnabled;
 
-    public function __construct( $logging = false,  $logName = '/mailutilities.log', $cuteIdentifier = 'MailUtilities.', $cuteModule = true, $withOldLog = true ) {
+    public function __construct( $logName = '/mailutilities.log', $cuteIdentifier = 'MailUtilities.', $cuteModule = true, $withOldLog = true ) {
 
         parent::__construct( $logName, $cuteIdentifier, $cuteModule, $withOldLog );
 
-        $this->num_days_cut     = 10;
-        $this->logEnabled       = $logging;
-
-        if( $this->logEnabled )
-            $this->LoggingStart();
     }
 
     public function __destruct() {
 
-        $this->LogOff();
+        parent::__destruct();
     }
 
-    public function LogOn()
-    {
-        if( ! $this->logEnabled ) {
-            $this->logEnabled = true;
-            $this->LoggingStart();
-        }
-    }
 
-    public function LogOff()
-    {
-        if( $this->logEnabled ) {
-            $this->logEnabled = false;
-            $this->LoggingFinish();
-        }
-    }
 
 
     public function SendMail($msg,
@@ -227,5 +207,6 @@ class MailUtilities extends LogUtilities
 
         return( $result_mail );
     }
+
 
 }

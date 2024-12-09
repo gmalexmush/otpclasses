@@ -682,5 +682,18 @@ class UrlUtilities extends LogUtilities
     return( $result );
   }
 
+  public function UrlClipQuery( $url )
+  //
+  // Обрезает в URL строку с параметрами (query), возвращает чисто URL
+  //
+  {
+    $boxUrl = parse_url( $url );
+    $port   = empty( $boxUrl['port'] ) ? '' : ':' . $boxUrl['port'];
+    $result = $boxUrl['scheme'] . '://' . $boxUrl['host'] . $port . $boxUrl['path'];
+
+    return( $result );
+  }
+
+
 }
 
