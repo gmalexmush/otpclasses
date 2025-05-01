@@ -613,6 +613,150 @@ class DrupalUtilities extends StringUtilities
       return( $result );
     }
 
+
+
+  public function LoadDataById( & $boxResult, $type, $rowId, $boxFields=[],
+                                $sort='field_sorting',
+                                $sortDirection='asc',
+                                $entity='node',
+                                $status=1 )
+    //
+    // $boxResult =
+    // [ $rowId =>
+    //      [
+    //           'title' => '....',
+    //         {  ...                            } - необязательное, только если указано: $boxFields
+    //      ]
+    //   ...
+    // ]
+    //
+  {
+    $result = [ 'errorCode' => -1 ]; // ошибка
+
+    try {
+      $nids = \Drupal::entityQuery( $entity )->accessCheck(FALSE)
+        ->condition('status', $status )
+        ->condition('type', $type )
+        ->condition('nid', $rowId )
+        ->sort($sort, $sortDirection)
+        ->execute();
+
+      if (!empty($nids))
+        $data = \Drupal\node\Entity\Node::loadMultiple($nids);
+
+      if (!empty($data)) {
+
+//        $this->logging_debug( 'boxId: ' . $rowId );
+
+        foreach ($data as $node) {
+
+          $resultSet = $node->toArray();
+          $item = [];
+          $item = [
+            'title' => $resultSet['title'][0]['value']
+          ];
+          //
+          if( ! empty( $boxFields ) ) {
+            foreach ( $boxFields as $code => $name ) {
+
+                $item[$code] = empty( $resultSet[$name][0]['value'] ) ? '' : $resultSet[$name][0]['value'];
+            }
+          }
+
+          $boxResult[ $rowId ] = $item;
+        }
+      }
+      $result = [];
+
+    } catch( \Exception $e ) {
+
+      $result = ['errorCode' => $e->getCode(), 'errorMessage' => $e->getMessage()];
+      $this->logging_debug( '' );
+      $this->logging_debug( 'Exception:' );
+      $this->logging_debug( $result );
+    } catch( \Error $e ) {
+
+      $result = ['errorCode' => $e->getCode(), 'errorMessage' => $e->getMessage()];
+      $this->logging_debug( '' );
+      $this->logging_debug( 'Error:' );
+      $this->logging_debug( $result );
+    }
+
+    return( $result );
+  }
+
+
+  public function ReadElements( $query, $properties=false, $countMax=0 )
+    //
+    // Читает элементы инфоблока. Если элемент с таким фильтром ($query) не существует, то возвращается ПУСТОЙ МАССИВ.
+    // если хоть один элемент существует, то возвращается массив данных по вычитанным записям
+    // ( [ 'FIELDS' => [ 'nid' => xxx, 'title' => xxx ], 'PROPERTIES' => [] ] ):
+    //    1) в котором присутствует как минимум массив - FIELDS ( если не задан параметр $properties)
+    //    2) дополнительно к FIELDS еще возвращается массив PROPERTIES со свойствами указанными в
+    //       $properties - пропертей, под их названиями ( $properties - массив пропертей).
+    //
+  {
+    $result   = [];
+    $rowCount = 0;
+
+    try {
+      $nids = $query->execute();
+
+      if( !empty($nids) )
+        $data = \Drupal\node\Entity\Node::loadMultiple($nids);
+
+      if (!empty($data)) {
+
+        foreach ($data as $node) {
+          //
+          $resultSet = $node->toArray();
+//        $this->logging_debug( 'ReadElements: resultSet:' );
+//        $this->logging_debug( $resultSet );
+          //
+          $item = [];
+          $item['FIELDS']['nid'] = $resultSet['nid'][0]['value'];                       // id элемента
+          $item['FIELDS']['type'] = $resultSet['type'][0]['target_id'];                 // тип инфоблока
+          $item['FIELDS']['title'] = $resultSet['title'][0]['value'];                   // название элемента
+          $item['FIELDS']['field_code100'] = $resultSet['field_code100'][0]['value'];   // код элемента
+          $item['FIELDS']['field_sorting'] = $resultSet['field_sorting'][0]['value'];         // сортировка элемента
+          $item['FIELDS']['status'] = $resultSet['status'][0]['value'];                 // активность элемента
+          $item['FIELDS']['created'] = $resultSet['created'][0]['value'];               // время создания элемента
+          $item['FIELDS']['changed'] = $resultSet['changed'][0]['value'];               // время редактирования элемента
+          $item['FIELDS']['uid'] = $resultSet['uid'][0]['target_id'];                   // id пользователя создавшего элемент
+          //
+          if (!empty($properties)) {
+            foreach ($properties as $fieldName) {
+              $item['PROPERTIES'][$fieldName] = empty($resultSet[$fieldName][0]['value']) ? '' : $resultSet[$fieldName][0]['value'];
+            }
+          }
+
+          $result[] = $item;
+          $rowCount++;
+
+          if ($countMax > 0 && $rowCount >= $countMax)
+            break;
+        }
+      }
+
+    } catch(\Exception $e ) {
+
+      $boxError = ['errorCode' => $e->getCode(), 'errorMessage' => $e->getMessage()];
+      $this->logging_debug( '' );
+      $this->logging_debug( 'ReadElements Exception:' );
+      $this->logging_debug( $boxError );
+    } catch( \Error $e ) {
+
+      $boxError = ['errorCode' => $e->getCode(), 'errorMessage' => $e->getMessage()];
+      $this->logging_debug( '' );
+      $this->logging_debug( 'ReadElements Error:' );
+      $this->logging_debug( $boxError );
+    }
+
+    return( $result );
+  }
+
+
+
   public function GetImage( $idImage )
   {
     //
@@ -627,7 +771,9 @@ class DrupalUtilities extends StringUtilities
     */
     if (!empty($idImage)) {
       $boxFile = \Drupal::entityTypeManager()->getStorage('file')->load($idImage[0]);
-      $image = \Drupal::service('file_url_generator')->generateString($boxFile->getFileUri());
+      if( !empty( $boxFile ) ) {
+        $image = \Drupal::service('file_url_generator')->generateString($boxFile->getFileUri());
+      }
     }
     //
     //
@@ -684,8 +830,8 @@ class DrupalUtilities extends StringUtilities
       if( empty( $isUriSegment ) ) {
         $result = false;  // нода не обнаружена ни где! в том числе и рекурсивно в родительсикх папках ...
 
-        $this->logging_debug( '' );
-        $this->logging_debug( 'Нода не обнаружена в родительских папках!' );
+//      $this->logging_debug( '' );
+//      $this->logging_debug( 'Нода не обнаружена в родительских папках!' );
 
       } else {
         $result = $isUriSegment;   // Текущая нода для текущей папки подходит. показываем ее.

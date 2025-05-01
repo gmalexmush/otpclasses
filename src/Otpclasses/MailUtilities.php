@@ -2,7 +2,9 @@
 
 namespace Otpclasses\Otpclasses;
 
+use Drupal\Core\Render\Markup;
 use Otpclasses\Otpclasses\LogUtilities;
+use Otpclasses\Otpclasses\CommonDataBox;
 use Otpclasses\Otpclasses\Gumlet\ImageResize;
 use Otpclasses\Otpclasses\Gumlet\ImageResizeException;
 
@@ -207,6 +209,150 @@ class MailUtilities extends LogUtilities
 
         return( $result_mail );
     }
+
+
+  //
+  // отправка сообщений админу
+  //
+  public function SendAdminMessage( $subject, $msgEmail='', $boxMessage=[] )
+  {
+    $resultSend             = false;
+
+    //
+    // используем e-mal для тестового сообщения
+    //
+    $localEmailTO     = CommonDataBox::$boxEmail[ 'TestSending' ][ 'EmailTo' ];
+    $localEmailCC     = CommonDataBox::$boxEmail[ 'TestSending' ][ 'EmailCC' ];
+    $localEmailBCC    = CommonDataBox::$boxEmail[ 'TestSending' ][ 'EmailBCC' ];
+    $localEmailFrom   = CommonDataBox::$boxEmail[ 'TestSending' ][ 'EmailFrom' ];
+
+    $resultSend = $this->SendMail(
+      $msgEmail,
+      $subject,
+      $localEmailTO,
+      $localEmailFrom,
+      $localEmailCC,
+      $localEmailBCC,
+      false,                   // text/plain type
+      'UTF-8',
+      false                   // file box
+    );
+
+    if ($resultSend) {
+
+      $templateBox = [
+        'EMAIL_FROM' => $localEmailFrom,
+        'EMAIL_TO' => $localEmailTO,
+        'CC' => $localEmailCC,
+        'BCC' => $localEmailBCC
+      ];
+
+      $this->logging_debug( '' );
+      $this->logging_debug('Почтовое сообщение отправлено на адреса администраторов:');
+      $this->logging_debug($templateBox);
+    }
+
+    return( $resultSend );
+  }
+
+
+  //
+  // отправка сообщений по указанному почтовому шаблону
+  //
+  public function SendMessage( $msgBox, $twigScoringPath, $mailFrom, $mailTo, $mailCc='', $mailBcc='' )
+  {
+    $resultSend = false;
+    //
+    $subject    = $msgBox['SUBJECT'];
+//  $twigBox['theme_hook_original'] = 'not-applicable';
+//  $twigBox['msgboody'] = $msgBox;
+
+    $msgEmail   = $this->getMessageBody( $msgBox, $twigScoringPath );
+
+//  $this->logging_debug('Почтовое сообщение:');
+//  $this->logging_debug($msgEmail);
+//  $this->logging_debug('');
+
+    $resultSend = $this->SendMail(
+      $msgEmail,
+      $subject,
+      $mailTo,                  // mail to
+      $mailFrom,                // mail from
+      $mailCc,                  // mail cc
+      $mailBcc,                 // mail bcc
+      false,                    // text/plain type
+      'UTF-8',
+      false                     // file box
+    );
+
+
+    if ($resultSend) {
+//    $this->logging_debug('Почтовое сообщение отправлено.');
+//    $this->logging_debug($templateBox);
+    }
+
+    return( $resultSend );
+  }
+
+
+
+  public function getMessageBody( $twigBox, $twigPath )
+  {
+    $renderArray = [
+//    '#theme' => 'msg_scoring_phone',
+      'msgbox' => $twigBox
+    ];
+
+    $this->logging_debug('');
+    $this->logging_debug('twigbox:' );
+    $this->logging_debug( $twigBox );
+    $this->logging_debug('');
+
+//  $fileBox = file_get_contents( $twigPath );
+
+//  $this->logging_debug('');
+//  $this->logging_debug('Шаблон: ' . $twigPath );
+//  $this->logging_debug($fileBox);
+//  $this->logging_debug('');
+
+    try {
+      $template = \Drupal::service('twig')->load($twigPath);
+
+      try {
+        $rendered = $template->render($renderArray);
+
+//      $this->logging_debug( '' );
+//      $this->logging_debug( 'rendered:' );
+//      $this->logging_debug( $rendered );
+
+        $msgBoody = Markup::create($rendered);
+
+      } catch(  \Exception $e ) {
+        $result = ['errorCode' => $e->getCode(), 'errorMessage' => $e->getMessage()];
+        $this->logging_debug( '' );
+        $this->logging_debug( 'getMessageBody rendered Exception:' );
+        $this->logging_debug( $result );
+        $this->loggingBackTrace();
+        $msgBoody = "Исключение при формировании почтового шаблона: " . $e->getMessage();
+      }
+    } catch( \Exception $e ) {
+      $result = ['errorCode' => $e->getCode(), 'errorMessage' => $e->getMessage()];
+      $this->logging_debug( '' );
+      $this->logging_debug( 'getMessageBody template Exception:' );
+      $this->logging_debug( $result );
+      $this->loggingBackTrace();
+      $msgBoody = "Исключение при формировании почтового шаблона: " . $e->getMessage();
+    } catch( \Error $e ) {
+      $result = ['errorCode' => $e->getCode(), 'errorMessage' => $e->getMessage()];
+      $this->logging_debug( '' );
+      $this->logging_debug( 'getMessageBody template Error:' );
+      $this->logging_debug( $result );
+      $this->loggingBackTrace();
+      $msgBoody = "Ошибка при формировании почтового шаблона: " . $e->getMessage();
+    }
+
+    return ($msgBoody);
+  }
 
 
 }

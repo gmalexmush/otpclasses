@@ -4,6 +4,7 @@ namespace Otpclasses\Otpclasses;
 
 use OtpClasses\Otpclasses\LogUtilities;
 use Otpclasses\Otpclasses\DateUtilities;
+use Otpclasses\Otpclasses\DrupalUtilities;
 use Drupal\webform\Entity\Webform;
 use Drupal\webform\Entity\WebformSubmission;
 use Drupal\webform\WebformSubmissionForm;
@@ -16,18 +17,24 @@ use Drupal\webform\Plugin\WebformElementInterface;
 class FormUtilities extends LogUtilities
 {
     public $dateHandle;
+    public $drupalHandle;
 
     public function __construct( $logName = '/formutilities.log', $cuteIdentifier = 'FormUtilities.', $cuteModule = true, $withOldLog = true  ) {
 
       parent::__construct( $logName, $cuteIdentifier, $cuteModule, $withOldLog );
 
       $this->dateHandle					= new DateUtilities( $this->log_name, $this->cute_identifier, $cuteModule, $withOldLog );
-      $this->dateHandle->SetDontCuteLog( true );
-      $this->dateHandle->SetShowTimeEachRow( $this->showTimeEachRow );
-      $this->dateHandle->SetLogDateFormat( $this->log_date_format );
-      $this->dateHandle->SetNumberDaysCut( $this->num_days_cut );
+//    $this->dateHandle->SetDontCuteLog( true );
+//    $this->dateHandle->SetShowTimeEachRow( $this->showTimeEachRow );
+//    $this->dateHandle->SetLogDateFormat( $this->log_date_format );
+//    $this->dateHandle->SetNumberDaysCut( $this->num_days_cut );
       $this->dateHandle->SetStarting( $this->IsStarting );
       $this->dateHandle->SetExternalLogging( [ 'function' => [ $this, "logging_debug" ] ] );
+
+      $this->drupalHandle     = new DrupalUtilities( $this->log_name, $this->cute_identifier, $cuteModule, $withOldLog );
+      $this->drupalHandle->SetStarting( $this->IsStarting );
+      $this->drupalHandle->SetExternalLogging( [ 'function' => [ $this, "logging_debug" ] ] );
+
     }
 
     public function __destruct() {
@@ -125,23 +132,46 @@ class FormUtilities extends LogUtilities
 //          $this->logging_debug( $data );
 
             foreach ( $data as $fieldName => &$fieldValue ) {
+
               $element = $webform->getElement( $fieldName );
 
-//          $this->logging_debug( '' );
-//          $this->logging_debug( 'agreement type: ' . $element['#type'] );
+              $errorReadData = true;
+              $previousValue = $fieldValue;
+              $setOptions    = isset( $element['#options'] );
+              //
+              // замена деприкатед метода: WebformEntityTrait::setOptions( $element );
+              //
+              if( $element['#type'] == 'webform_entity_select' ) {
 
-//          $this->logging_debug( '' );
-//          $this->logging_debug( 'agreement properties:' );
-//          $this->logging_debug( $elementProperties );
-              WebformEntityTrait::setOptions( $element );
-              if( isset( $element['#options'] ) ) {
-
-                $previousValue = $fieldValue;
-                $value = WebformOptionsHelper::getOptionsText( (array) $fieldValue, $element['#options'] );
-
+                $elementOptions = [];
+                $typeData = '';
+                // ищем тип данных в select
+                foreach( $element['#selection_settings']['target_bundles'] as $codeData => $itemData ) {
+                  $typeData = $itemData;
+                }
+                // загружаем описания для найденного типа данных
+                if( ! empty( $fieldValue ) ) {
+                  $errorReadData = $this->drupalHandle->LoadDataById(
+                    $elementOptions,
+                    $typeData,
+                    $fieldValue
+                  );
+                  // если данные загрузились, заполняем в переменную $fieldValue описание
+                  if (!$errorReadData) {
+                    $fieldValue = $elementOptions[$fieldValue]['title'];
+                  }
+                }
 //              $this->logging_debug( '' );
-//              $this->logging_debug( $fieldName . ':' );
-//              $this->logging_debug( $value );
+//              $this->logging_debug( 'ЭЛЕМЕНТ:' );
+//              $this->logging_debug( $element );
+
+                $setOptions = false;
+              }
+
+//            WebformEntityTrait::setOptions( $element ); // depricated метод, который инициализирует справочник опций в селектах
+              if( $setOptions ) {   // options - есть в элементе! это тип "select"
+                // в переменную value загружается описание
+                $value = WebformOptionsHelper::getOptionsText( (array) $fieldValue, $element['#options'] );
 
                 if(count($value) > 1) {
 
@@ -160,6 +190,22 @@ class FormUtilities extends LogUtilities
                   ];
 
                 }
+
+//              $this->logging_debug( '' );
+//              $this->logging_debug( '(' . $element['#type'] . ')' . $fieldName . ' (select):' );
+//              $this->logging_debug( $fieldValue );
+
+              } else { // не select
+
+                $fieldValue = [
+                  'type'  => $element['#type'],
+                  'value' =>  $previousValue,
+                  'caption' => $fieldValue
+                ];
+
+//              $this->logging_debug( '' );
+//              $this->logging_debug( '(' . $element['#type'] . ')' . $fieldName . ':' );
+//              $this->logging_debug( $fieldValue );
               }
             }
 
@@ -228,6 +274,8 @@ class FormUtilities extends LogUtilities
     //  ...,
     //  'name' => 'VALUE'
     // ]
+    // return:  [] - УСПЕШНО.
+    //          ['errorCode' => '...', 'errorMessage' => ' .... ' ] - ОШИБКА
     //
   {
     $result = false;

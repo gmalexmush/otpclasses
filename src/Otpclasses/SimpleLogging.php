@@ -18,6 +18,7 @@ class SimpleLogging
     public $timeZone;
     public $log_name;
     public $log_folder;
+    public $logFolderRelative;
     public $ext_logging;
     public $loggingFunction;
     public $documentRoot;
@@ -36,6 +37,7 @@ class SimpleLogging
     public $captionLang;
     public $sitesBox; // контейнер с сайтами, в котором первый сайт - всегда текущий!
     public $domain;   // текущий домен!
+    public $error;
 
     function __construct( $logName = '/simple_logging.log' )
     {
@@ -99,7 +101,7 @@ class SimpleLogging
             $language = ($langCaption == 'ua') ? 'uk' : $langCaption;
 
             if ( $url != $this->domain ) {
-              // этого домена в массиве еще нет - добавдяем
+              // этого домена в массиве еще нет - добавляем
               $this->sitesBox[] = ['folder'=>$folder, 'domain'=>$url, 'lang'=>$language];
             }
           }
@@ -118,7 +120,8 @@ class SimpleLogging
         $this->eol              = "\r\n";
         $this->returnCaret      = "\n";
         $this->debugPrefix      = '-debug';
-        $this->fullFolderName	= $this->documentRoot . '/sites/' . $this->sitesBox[0]['folder'] . $this->log_folder;
+        $this->logFolderRelative = '/sites/' . $this->sitesBox[0]['folder'] . $this->log_folder;
+        $this->fullFolderName	= $this->documentRoot . $this->logFolderRelative;
         $this->fullNameLog		= $this->fullFolderName . $this->log_name;
         $this->fullNameDebugLog = str_replace( '.log', $this->debugPrefix, $this->fullNameLog ) . '.log';
         $this->boxLoggingIp     = [];

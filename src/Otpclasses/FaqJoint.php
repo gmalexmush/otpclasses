@@ -107,6 +107,8 @@ class FaqJoint extends UrlUtilities
     $data = [];
 
     $uri = $this->GetCurrentPathWithoutParameters(); // \Drupal::request()->getRequestUri();
+    $this->logging_debug('');
+    $this->logging_debug('current path: ' . $uri );
 
     $useRecursive = $this->cfgForm->get('recursive'); // чекбокс - рекурсивный показ Faq в дочерних папках, если в них отсутствует свои Faq-и
     $sort = $this->cfgForm->get('sort_field') ?? 'field_sorting';

@@ -440,20 +440,30 @@ class OtpUtilities extends LogUtilities
     return ( number_format ($amount, 2, '.', ' ') );
   }
 
-  public function GetRequestValue( &$form, $field, $defaultValue )
-  {
-    //
-    // функция заполняет поле формы ($field в массиве формы $form) значением по умолчанию,
-    // которое берется из аргумента $defaultValue,
-    //
-    if( ! empty( $form['elements'][$field] )
-        && ! empty( $form['elements'][$field]['#prepopulate'] )
-        && ! empty( $defaultValue ) ) {
 
-      $form['elements'][$field]['#default_value'] = $defaultValue;
-      $this->logging_debug( $field . ': ' . $form['elements'][$field]['#default_value'] );
+  public function GetRequestValues( &$boxFormField, $fieldList )
+    //
+    // функция заполняет поля формы в массиве: $boxFormField согласно списка: $fieldList
+    // одноименными значениям из массива $_REQUEST
+    //
+  {
+    foreach( $fieldList as $field ) {
+
+      if( ! empty( $boxFormField[$field] ) ) {
+
+        $defaultValue = $_REQUEST[$field] ?? '';
+
+        if( ! empty( $boxFormField[$field]['#prepopulate'] )  && ! empty( $defaultValue ) ) {
+
+          $boxFormField[$field]['#default_value'] = $defaultValue;
+          $this->logging_debug($field . ': ' . $boxFormField[$field]['#default_value']);
+        }
+      }
+
     }
   }
+
+
 
   public function GetParametersInSources( $referer,
                                          $boxParams=[ 'utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term' ] )

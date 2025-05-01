@@ -129,7 +129,6 @@ class TunedPageJoint extends UrlUtilities
       'code_folder' => $codeCalcFolder,
       'show'  => $showCalc,
       'show_otpbankua' => 'Y',
-      'show_otpsmart' => 'Y',
       'title' => $calcMainTitle,
       'product' => $productCaption,
       'inner_title_first' => $calcInnerFirstTitle,
@@ -167,6 +166,8 @@ class TunedPageJoint extends UrlUtilities
       // ( $infoblockCalc[ТИП МАТЕРИАЛА КАЛЬКУЛЯТОРА] + $codeCalcFolder[КОД ПАПКИ В САМОМ ТИПЕ КАЛЬКУЛЯТОРА] )
       // + для сложных калькуляторов: $args с дополнительными параметрами вызова.
       //
+      $showCalc = 'N';
+
       switch( $infoblockCalc ) {
         case 'CalcDeposit':
 
@@ -192,6 +193,10 @@ class TunedPageJoint extends UrlUtilities
           }
           $calc['data']  = $calcData;
           //
+          if( !empty( $calcData ) && ! empty( $calcData['items'] ) ) {
+
+            $showCalc = 'Y';
+          }
           break;
 
         case 'CalcCashLoan':
@@ -199,6 +204,10 @@ class TunedPageJoint extends UrlUtilities
           $calcLoad->LoadCalcCashLoan( $calcData, $infoblockCalc, $args );
 
           $calc['data']  = $calcData;
+          if( !empty( $calcData ) && ! empty( $calcData['items'] ) ) {
+
+            $showCalc = 'Y';
+          }
           break;
 
         case 'CalcLoanUniversal':
@@ -231,14 +240,15 @@ class TunedPageJoint extends UrlUtilities
                 'result_notarius' => t( 'Notary services' ),
                 'result_pension_amount' => t( 'Compulsory state pension insurance' )
               ];
+
+          if( !empty( $calcData ) && ! empty( $calcData['items'] ) ) {
+
+            $showCalc = 'Y';
+          }
           break;
       }
 
-      if( !empty( $calcData ) && ! empty( $calcData['items'] ) ) {
-
-        $showCalc = 'Y';
-        $calc['show'] = $showCalc;
-      }
+      $calc['show'] = $showCalc;
     }
     //
     // БЛОК HTML С ДВУМЯ ЗАКЛАДКАМИ

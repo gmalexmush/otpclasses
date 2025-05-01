@@ -90,6 +90,7 @@ class AgentOptions extends LogUtilities
 	  public $processingSpeed;
     public $triggerFlag;
 	  public $timeLastMailSend;	// время последней отправки почтового сообщения
+    public $redOptions;
 //
 //  Блок полей, соответствующих полям элементов инфоблока - otpb_agents_options
 //  ОКОНЧАНИЕ
@@ -117,6 +118,8 @@ class AgentOptions extends LogUtilities
     public function __construct( $logName = '/agents.log', $cuteIdentifier = 'AgentIdentifier.', $cuteModule = false, $withOldLog = true ) {
 
     parent::__construct( $logName, $cuteIdentifier, $cuteModule, $withOldLog );
+
+    $this->cuteForce = true;  // модуль агента может сам себя подрезать
 
     $this->SetShowTimeEachRow( false );
 		$this->SetLogDateFormat( 'dd.mm.yyyy' );
@@ -217,6 +220,7 @@ class AgentOptions extends LogUtilities
     $this->statusPublished    = 1;            // читать только записи с активным статусом (опубликованные)
 		$this->periodAdminMessage	= 1;						// по умолчанию раз в час
     $this->nidModuleOptions = 0;
+    $this->redOptions = [];
 	}
 
 
@@ -283,7 +287,8 @@ class AgentOptions extends LogUtilities
           $result = realpath( $path );
           $this->logging_debug( 'Settings file path: ' . $result );
         } else {
-          throw new FileNotFoundException( 'File not found.', 100 );
+          $this->logging_debug( 'Settings file path: ' . $path );
+          throw new FileNotFoundException( 'GetSettingsFolder: file not found.', 100 );
         }
 
       } catch( \Error $e ) {
@@ -320,12 +325,30 @@ class AgentOptions extends LogUtilities
 
     if( file_exists( $fullSettingsFileName ) ) {
 
-      $box = file_get_contents($fullSettingsFileName);
+      try {
+        $box = file_get_contents($fullSettingsFileName);
 
 //    $this->logging_debug( "box:" );
 //    $this->logging_debug( $box );
 
-      $result = json_decode($box, true);
+        $result = json_decode($box, true);
+
+      } catch( \Exception $e ) {
+        $errMessage = ['errorCode' => $e->getCode(), 'errorMessage' => $e->getMessage()];
+        $this->logging_debug( '' );
+        $this->logging_debug( 'LoadSettingsFromJson Exception:' );
+        $this->logging_debug( $errMessage );
+      } catch ( \Error $e ) {
+        $errMessage = ['errorCode' => $e->getCode(), 'errorMessage' => $e->getMessage()];
+        $this->logging_debug( '' );
+        $this->logging_debug( 'LoadSettingsFromJson Error:' );
+        $this->logging_debug( $errMessage );
+      }
+
+    } else {
+      $this->logging_debug('');
+      $this->logging_debug('Файл настроек: ' . $fullSettingsFileName );
+      $this->logging_debug('модуля: ' . $this->moduleName . ' не найден.');
     }
 
     return( $result );
@@ -417,6 +440,9 @@ class AgentOptions extends LogUtilities
 				// НАЧАЛО НОВОГО ДНЯ БЫВАЕТ ТОЛЬКО РАЗ в СУТКИ
 				//
 				$this->is_new_day = true;
+
+//      $this->logging_debug('APIYandexKey' );
+//      $this->logging_debug($this->APIYandexKey );
 
 				foreach ($this->APIYandexKey as $keyAPI) {
 					$this->APIYandexCount[$keyAPI]['val'] = $this->APIYandexCount[$keyAPI]['max'] - 3;
@@ -768,8 +794,8 @@ class AgentOptions extends LogUtilities
           $this->time_active_reset = $opts['time_active_reset'];
           $this->agentuserlogin = $opts['agentuserlogin'];
           $this->agent_user_id = $opts['agent_user_id'];
-          $this->agent_start_date = $opts['agent_start_date'];
-          $this->agent_finish_date = $opts['agent_finish_date'];
+          $this->agent_start_date = intval( $opts['agent_start_date'], 10 );
+          $this->agent_finish_date = intval( $opts['agent_finish_date'], 10 );
           $this->npp = $opts['npp'];
           $this->socks_proxy = $opts['socks_proxy'];
           $this->type_proxy = $opts['type_proxy'];                  // ПОЛУЧИЛИ ТИП ПРОКСИ (номер)
@@ -786,6 +812,11 @@ class AgentOptions extends LogUtilities
 //        $this->logging_debug('');
 //        $this->logging_debug( 'Массив настроек:' );
 //        $this->logging_debug( $opts );
+
+          $this->redOptions = $opts;
+
+//        $this->logging_debug('GetOptions, APIYandexKey' );
+//        $this->logging_debug($this->APIYandexKey );
         }
       } else {
         $this->logging_debug( "Объект data - пустой." );
@@ -860,7 +891,9 @@ class AgentOptions extends LogUtilities
         'agent_sort' => $resultSet[$sort][0]['value'],       // значение поля сортировки
         "time_start" => $resultSet['field_code'][0]['value'],  // Время начала активности
         "intervalForce" => $resultSet['field_consttermstep'][0]['value'], // периодичность запуска агента (сек) в рабочие дни
-        "intervalNorm" => $resultSet['field_interval'][0]['value'], // периодичность суточной активности агента  (в секундах, но кратно дням)
+        "intervalNorm" => empty( $resultSet['field_interval'][0]['value'] )
+          ? 86400                                                         // отдается из базы данных в виде: day_86400
+          : intval( substr( $resultSet['field_interval'][0]['value'], 4 ), 10 ),  // периодичность суточной активности агента  (в секундах, но кратно дням)
         "intervalWeekend" => $resultSet['field_addonimagepercent'][0]['value'], // периодичность запуска агента (сек) в выходные
         "time_finish" => $resultSet['field_codecontenttype'][0]['value'],  // Время окончания активности
         "week_is_work" => empty($resultSet['field_paramsflip'][0]['value']) ? 'N' : 'Y',  // Работа в выходные дни ( Y / N )
@@ -893,8 +926,8 @@ class AgentOptions extends LogUtilities
         "agentuserlogin" => $resultSet['field_agentuserlogin'][0]['value'], // Логин админа для агента
         "agent_user_id" => 0,
 
-        "agent_start_date" => $varAgentStartDate, // Дата начала обработки (timestamp)
-        "agent_finish_date" => $varAgentFinishDate, // Дата окончания обработки (timestamp)
+        "agent_start_date" => date( 'Y.m.d', $varAgentStartDate ), // Дата начала обработки (yyyy.mm.dd)
+        "agent_finish_date" => date( 'Y.m.d', $varAgentFinishDate ), // Дата окончания обработки (yyyy.mm.dd)
 
         "npp" => empty($resultSet['field_numbercode']) ? 0 : $resultSet['field_numbercode'][0]['value'],  // Какой-то номер по порядку
         "socks_proxy" => $resultSet['field_socksproxy'] ?? '',  // список прокси серверов: IP:port, IP:port, IP:port ...
@@ -911,6 +944,10 @@ class AgentOptions extends LogUtilities
         'successfull_atempt' => empty($resultSet['field_showgetting'][0]['value']) ? 'N' : 'Y', // Флаг остановки АГЕНТА после успешной попытки (Y/N)
         'successfull_atempt_weekend' => empty($resultSet['field_showhtmlone'][0]['value']) ? 'N' : 'Y'// Флаг остановки АГЕНТА после успешной попытки в выходные (Y/N)
       ];
+
+//    $this->logging_debug( 'GetOneAgentOptions result:' );
+//    $this->logging_debug( $result );
+
     } catch( \Error $e ) {
       $result = ['errorCode' => $e->getCode(), 'errorMessage' => $e->getMessage()];
       $this->logging_debug( '' );
@@ -933,6 +970,9 @@ class AgentOptions extends LogUtilities
 
   public function  SetOptions()
   {
+//  $this->logging_debug('SetOptions, APIYandexKey' );
+//  $this->logging_debug($this->APIYandexKey );
+
     try {
       $node = \Drupal::entityTypeManager()->getStorage('node')->load( $this->nidModuleOptions );
 
@@ -942,26 +982,84 @@ class AgentOptions extends LogUtilities
       $node->field_actionfinish->value = $this->dateHandle->TimeStampToStringForDrupalDataBase( $this->action_finish ); // ActionFinish
       $node->field_nextstart->value = $this->dateHandle->TimeStampToStringForDrupalDataBase( $this->next_start ); // NextStart
       $node->field_lastmailsend->value = $this->dateHandle->TimeStampToStringForDrupalDataBase( $this->timeLastMailSend ); // LastMailSend
-      $node->field_yandexgeoapicounts->value = $this->PrepareCountBoxToListStringByDelimiters( $this->APIYandexCount, ':' ); // YandexGeoApiCounts
       $node->field_triggerflag->value = $this->triggerFlag; // TriggerFlag
       $node->field_idprocessed->value = $this->id_processed; // IdProcessed
       $node->field_timetimemax->value = $this->dateHandle->TimeStampToStringForDrupalDataBase( $this->time_time_max ); // TimeTimeMax
       $node->field_actiontimemax->value = $this->action_time_max; // ActionTimeMax
       $node->field_percentcasco->value = $this->action_time_last; // ActionTimeLast
+      $node->field_agentstartdate->value = $this->agent_start_date; // AgentStartDate
+      $node->field_agentfinishdate->value = $this->agent_finish_date; // AgentFinishDate
 
+      $node->field_agentuserlogin->value = $this->agentuserlogin; // AgentUserLogin
+
+      if( empty( $this->checkFormListId ) ) {
+        $node->field_checkformlistid->value = ''; // CheckFormListId ???
+      } else {
+        $node->field_checkformlistid->value = $this->checkFormListId; // CheckFormListId ???
+      }
+
+      $node->field_bigblock->value = $this->deactivation == 'Y' ? true : false; // Deactivation
+      $node->field_showhtmlthree->value = $this->force_agent == 'Y' ? true : false;   // ForceAgent
+
+      if( empty( $this->forms_id ) ) {
+        $node->field_formsid->value = '';  // FormsId
+      } else {
+        $node->field_formsid->value = $this->forms_id;  // FormsId
+      }
+
+      $node->field_idprocessed->value = $this->id_processed;  // IdProcessed
+      $node->field_consttermstep->value = $this->intervalForce; // Interval (Интервал активности (периодичность запуска агента в течении суток) в секундах)
+      $node->field_addonimagepercent->value = $this->intervalWeekend; // IntervalWeekend (Интервал активности (сек) в выходные дни)
+      $node->field_interval->value = 'day_' . $this->intervalNorm; // IntervalWork (Период повторения активности (сек.))
+      $node->field_groupsorting->value = $this->max_number_retry; // MaxNumberRetry
+      $node->field_employmentterm->value = $this->week_max_number_retry;  // MaxNumberRetryWeekend
+      $node->field_numbercode->value = $this->npp;  // npp
+      $node->field_age->value = $this->pack_size;   // PackSize
+      $node->field_requestsleep->value = $this->request_sleep;  // RequestSleep
+
+      if( empty( $this->socks_proxy ) ) {
+        $node->field_socksproxy->value = '';  // SocksProxy
+      } else {
+        $node->field_socksproxy->value = $this->socks_proxy;  // SocksProxy
+      }
+
+      $node->field_paramsfilterbottom->value = $this->StopAfterSuccessfullAtempt == 'Y' ? true:false; // StopAfterSuccessFullAtempt
+      $node->field_showgetting->value = $this->SuccessfullAtempt == 'Y' ? true : false; // SuccessfullAtempt
+      $node->field_showhtmlone->value = $this->SuccessfullAtemptWeekend == 'Y' ? true : false;  // SuccessfullAtemptWeekend
+      $node->field_timeactivereset->value = $this->time_active_reset; // TimeActiveReset (Время сброса флага активности (минуты))
+      $node->field_codecontenttype->value = $this->time_finish;   // TimeFinish
+      $node->field_timefinishweekend->value = $this->week_time_finish;  // TimeFinishWeekend
+      $node->field_code->value = $this->time_start; // TimeStart
+      $node->field_timestartweekend->value = $this->week_time_start;  // TimeStartWeekend
+      $node->field_typeproxy->value = $this->type_proxy;  // TypeProxy
+      $node->field_paramsdebug->value = $this->week_emulation == 'Y' ? true : false;  // WeekendEmulation
+      $node->field_paramsflip->value = $this->week_is_work == 'Y' ? true : false; // WorkWeekend
+
+      $apiYandexCounts = $this->PrepareCountBoxToListStringByDelimiters( $this->APIYandexCount, ':' );  // YandexGeoApiCounts
+      if( empty( $apiYandexCounts ) ) {
+        $node->field_yandexgeoapicounts->value = '';
+      } else {
+        $node->field_yandexgeoapicounts->value = $apiYandexCounts;
+      }
+
+      if( empty( $this->APIYandexKey ) ) {
+        $node->field_yandexgeoapikey->value = '';  // YandexGeoApiKey ???
+      } else {
+        $node->field_yandexgeoapikey->value = $this->APIYandexKey;    // YandexGeoApiKey ???
+      }
       $node->save();
 
 //    $this->logging_debug( '' );
 //    $this->logging_debug( 'Опции агента сохранены в Б.Д.' );
 
-    } catch( \Error ) {
+    } catch( \Error $e ) {
       $result = ['errorCode' => $e->getCode(), 'errorMessage' => $e->getMessage()];
       $this->logging_debug( '' );
       $this->logging_debug( 'SetOptions Error:' );
       $this->logging_debug( $result );
       $this->loggingBackTrace();
       throw $e;
-    } catch( \Exception ) {
+    } catch( \Exception $e ) {
       $result = ['errorCode' => $e->getCode(), 'errorMessage' => $e->getMessage()];
       $this->logging_debug( '' );
       $this->logging_debug( 'SetOptions Exception:' );
@@ -979,7 +1077,9 @@ class AgentOptions extends LogUtilities
 		//
     //
 	{
-  	$this->ChangeForce();
+  	$result = $this->ChangeForce();
+
+    return $result;
 	}
 
 
@@ -989,11 +1089,11 @@ class AgentOptions extends LogUtilities
   // ( обычно это 86400 т.е. сутки )
 	// и берется время старта из настроек.
 	//
-	// добавилось 2 аргумента:  $module_agent_id, $module_agent_name
+  // return:
+  //     true - finish наступил!
 	//
 	{
-		if( empty( $current_agent_sort ) )
-			$current_agent_sort		= $this->agent_sort;
+    $result = false;
 
 		$this->workingCikleFinish 	= $this->IsFinishCicle( $this->useDateCikle );
 
@@ -1084,11 +1184,65 @@ class AgentOptions extends LogUtilities
 
 			$this->logging_debug( 'Финиш уже наступил! Устанавливаем следующее время старта.' );
 
-			$this->SetNextStart( $module_agent_id, $module_agent_name );
+			$this->SetNextStart();
+      $result = true; // finish наступил!
 		}
 
 //		$this->logging_debug( 'ChangeForce finish!' );
+    return $result;
 	}
+
+
+  public function getStartTimeStamp()
+    //
+    //
+    //
+  {
+    $result = false;
+
+    $this->workingCikleFinish 	= $this->IsFinishCicle( $this->useDateCikle );
+
+    if( $this->workingCikleFinish ) {
+      $interval		= $this->intervalNorm;
+    } else {
+      $interval		= 0;
+    }
+
+    if( $this->IsWeekEnd() ) {
+
+      if( $this->week_time_finish != "" && $this->week_time_start != "" ) {
+
+        $this->GetStartDateTime( 	$this->week_time_start,
+          $this->week_time_finish,
+          $interval,
+          "d.m.Y H:i:s",
+          $startTimeStamp );	// получение ТЕКУЩЕЙ даты и времени старта
+
+      } else {
+        $startTimeStamp		= time() - 100;		// текущее время + смещение отладки - 100 секунд!
+      }
+
+      $result = $startTimeStamp;
+
+    } else {
+
+      if( $this->time_finish != "" && $this->time_start != "" ) {
+
+        $this->GetStartDateTime(	$this->time_start,
+          $this->time_finish,
+          $interval,
+          "d.m.Y H:i:s",
+          $startTimeStamp );	// получение ТЕКУЩЕЙ даты и времени старта
+
+      } else {
+        $startTimeStamp    = time() - 100;		// текущее время + смещение отладки - 100 секунд!
+      }
+
+      $result = $startTimeStamp;
+    }
+
+    return $result;
+  }
 
 
 
@@ -1145,15 +1299,12 @@ class AgentOptions extends LogUtilities
 
 
 
-  public function SetNextStart( $module_agent_id, $module_agent_name, $current_agent_sort = false )
+  public function SetNextStart()
 		//
 		// активируется следующий старт через $this->intervalNorm ( обычно это 86400 т.е. сутки )
 		// время старта берется из настроек. И переустанавливаются счетчики контрольных выстрелов на максимум.
 		//
 	{
-		if( empty( $current_agent_sort ) )
-			$current_agent_sort		= $this->agent_sort;
-
 		$this->workingCikleFinish 	= $this->IsFinishCicle( $this->useDateCikle );
 
 		if( $this->IsWeekEnd() ) {
@@ -1224,10 +1375,10 @@ class AgentOptions extends LogUtilities
 		$controlDate	= 0;
 		$this->dateHandle->OnlyTime( time(), $controlDate );	// получим текущую дату без смещения в $controlDate (Unixtime)
 		//
-//		$this->logging_debug('currentDate: ' . date( "d.m.Y H:i:s", $currentDate ) );
-//		$this->logging_debug('controlDate: ' . date( "d.m.Y H:i:s", $controlDate ) );
+//	$this->logging_debug('currentDate: ' . date( "d.m.Y H:i:s", $currentDate ) );
+//	$this->logging_debug('controlDate: ' . date( "d.m.Y H:i:s", $controlDate ) );
 		//
-		$this->logging_debug( 'GetStartDateTime, start: ' . date( "H:i:s", $startTime) . ', finish: ' . date( "H:i:s", $finishTime ) . ', текущее: ' . date( "H:i:s", $currentTime ) );
+//	$this->logging_debug( 'GetStartDateTime, start: ' . date( "H:i:s", $startTime) . ', finish: ' . date( "H:i:s", $finishTime ) . ', текущее: ' . date( "H:i:s", $currentTime ) );
 
 		if( $startTime - $finishTime > 0 ) {		// чистое время без даты!
 			//
@@ -1334,12 +1485,18 @@ class AgentOptions extends LogUtilities
 			// ( обычно ДЕНЬ например: с 01:00:00 до 23:00:00 )
 			// $startTime  <  $finishTime
 			//
+      $this->logging_debug('' );
+      $this->logging_debug('обычно ДЕНЬ. currentTime: ' . date( "H:i:s", $currentTime ) . ', startTime: ' . date( "H:i:s", $startTime ) . ', finishTime: ' . date( "H:i:s", $finishTime ) );
+
       if($currentTime > $finishTime && $currentTime > $startTime) {
         //
         // МОМЕНТ ПОСЛЕДНЕГО ЗАПУСКА МОДУЛЯ - когда устанавливается следующее время старта !
         // ( например в 23:00:10 ) т.е. до полуночи, до 24:00:00 (00:00:00)
         // Дата еще не перещелкнулась - ее надо инкрементировать.
         //
+        $this->logging_debug('' );
+        $this->logging_debug('МОМЕНТ ПОСЛЕДНЕГО ЗАПУСКА МОДУЛЯ, interval: ' . $interval );
+
         if( $interval - 86400 < 0 )
           $interval	= 86400;	// в этой ситуации 100% переход через полночь, это + 24 часа!!!
 
