@@ -285,7 +285,8 @@ class AgentOptions extends LogUtilities
 
         if( file_exists( $path ) ) {
           $result = realpath( $path );
-          $this->logging_debug( 'Settings file path: ' . $result );
+//        $this->logging_debug( 'Relative settings file path: ' . $path );
+//        $this->logging_debug( 'Settings file path: ' . $result );
         } else {
           $this->logging_debug( 'Settings file path: ' . $path );
           throw new FileNotFoundException( 'GetSettingsFolder: file not found.', 100 );
@@ -325,24 +326,10 @@ class AgentOptions extends LogUtilities
 
     if( file_exists( $fullSettingsFileName ) ) {
 
-      try {
-        $box = file_get_contents($fullSettingsFileName);
+      $result = $this->LoadJsonFileToArray( $fullSettingsFileName );
 
-//    $this->logging_debug( "box:" );
-//    $this->logging_debug( $box );
-
-        $result = json_decode($box, true);
-
-      } catch( \Exception $e ) {
-        $errMessage = ['errorCode' => $e->getCode(), 'errorMessage' => $e->getMessage()];
-        $this->logging_debug( '' );
-        $this->logging_debug( 'LoadSettingsFromJson Exception:' );
-        $this->logging_debug( $errMessage );
-      } catch ( \Error $e ) {
-        $errMessage = ['errorCode' => $e->getCode(), 'errorMessage' => $e->getMessage()];
-        $this->logging_debug( '' );
-        $this->logging_debug( 'LoadSettingsFromJson Error:' );
-        $this->logging_debug( $errMessage );
+      if( empty( $result ) ) {
+        $this->logging_debug( 'Ошибка в LoadSettingsFromJson()' );
       }
 
     } else {

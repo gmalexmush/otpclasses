@@ -476,4 +476,53 @@ class SimpleLogging
         return( $result );
     }
 
+    public function ArrayToJsonFile( $fullFileNameJson, $box )
+    {
+      $result = [];
+
+      try {
+        $handle = fopen( $fullFileNameJson, 'w' );
+        fwrite( $handle, json_encode( $box, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE  ) );
+        fclose( $handle );
+
+      } catch( \Exception $e ) {
+        $result = ['errorCode' => $e->getCode(), 'errorMessage' => $e->getMessage()];
+        $this->logging_debug( '' );
+        $this->logging_debug( 'ArrayToJsonFile Exception:' );
+        $this->logging_debug( $result );
+      } catch ( \Error $e ) {
+        $result = ['errorCode' => $e->getCode(), 'errorMessage' => $e->getMessage()];
+        $this->logging_debug( '' );
+        $this->logging_debug( 'ArrayToJsonFile Error:' );
+        $this->logging_debug( $result );
+      }
+
+      return $result;
+    }
+
+    public function LoadJsonFileToArray( $fullFileNameJson, & $errMessage='' )
+    {
+      $result = [];
+
+      try {
+
+        $json = file_get_contents($fullFileNameJson);
+        $result = json_decode($json, true);
+
+      } catch( \Exception $e ) {
+        $errMessage = ['errorCode' => $e->getCode(), 'errorMessage' => $e->getMessage()];
+        $this->logging_debug( '' );
+        $this->logging_debug( 'LoadJsonFileToArray Exception:' );
+        $this->logging_debug( $errMessage );
+      } catch ( \Error $e ) {
+        $errMessage = ['errorCode' => $e->getCode(), 'errorMessage' => $e->getMessage()];
+        $this->logging_debug( '' );
+        $this->logging_debug( 'LoadJsonFileToArray Error:' );
+        $this->logging_debug( $errMessage );
+      }
+
+      return( $result );
+    }
+
+
 }

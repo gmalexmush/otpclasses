@@ -253,31 +253,6 @@ class OtpUtilities extends LogUtilities
         return( $value );
     }
 
-    public function ArrayToJsonFile( $fullFileNameJson, $box )
-    {
-        $handle = fopen( $fullFileNameJson, 'w' );
-        fwrite( $handle, json_encode( $box ) );
-        fclose( $handle );
-    }
-
-    public function LoadJsonFileToArray( $fullFileNameJson )
-    {
-        $json   = file_get_contents( $fullFileNameJson );
-        $result = json_decode( $json );
-
-        return( $result );
-    }
-
-
-
-
-
-
-
-
-
-
-
 
     public function FormatPhoneDescription( $mobile )
     //

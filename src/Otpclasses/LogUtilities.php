@@ -1994,6 +1994,11 @@ class LogUtilities extends SimpleLogging
     return ($boxFiles);
   }
 
+  public function DrupalCurrentSiteProtocol()
+  {
+    $protocol = Settings::get('SITE_PROTOCOL') . '://';
+    return $protocol;
+  }
 
 
 }

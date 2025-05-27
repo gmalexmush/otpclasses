@@ -8,6 +8,8 @@ use Otpclasses\Otpclasses\LogUtilities;
 class DateUtilities extends LogUtilities
 {
 
+    public static  $days=[ 'sunday', 'monday','tuesday', 'wednesday', 'thursday', 'friday', 'saturday' ];
+
     public $popularFormats;
 
     public function __construct($logName = '/dateutilities.log', $cuteIdentifier = 'DateUtilities.', $cuteModule = true, $withOldLog = true)
@@ -571,6 +573,13 @@ class DateUtilities extends LogUtilities
       }
 
       return( $timestamp );
+    }
+
+    public function StringDayOfWeek( $time )
+    {
+      $result = self::$days[ date('w', $time ) ];
+
+      return( $result );
     }
 }
 

@@ -297,16 +297,18 @@ class MailUtilities extends LogUtilities
 
 
   public function getMessageBody( $twigBox, $twigPath )
+    //
+    // Возвращает готовое сформированное тело сообщения по шаблону: $twigPath с использованием данных: $twigBox
+    //
   {
     $renderArray = [
-//    '#theme' => 'msg_scoring_phone',
       'msgbox' => $twigBox
     ];
 
-    $this->logging_debug('');
-    $this->logging_debug('twigbox:' );
-    $this->logging_debug( $twigBox );
-    $this->logging_debug('');
+//  $this->logging_debug('');
+//  $this->logging_debug('twigbox:' );
+//  $this->logging_debug( $twigBox );
+//  $this->logging_debug('');
 
 //  $fileBox = file_get_contents( $twigPath );
 
@@ -321,9 +323,9 @@ class MailUtilities extends LogUtilities
       try {
         $rendered = $template->render($renderArray);
 
-//      $this->logging_debug( '' );
-//      $this->logging_debug( 'rendered:' );
-//      $this->logging_debug( $rendered );
+        $this->logging_debug( '' );
+        $this->logging_debug( 'rendered:' );
+        $this->logging_debug( $rendered );
 
         $msgBoody = Markup::create($rendered);
 
