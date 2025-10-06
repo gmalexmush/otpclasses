@@ -323,9 +323,9 @@ class MailUtilities extends LogUtilities
       try {
         $rendered = $template->render($renderArray);
 
-        $this->logging_debug( '' );
-        $this->logging_debug( 'rendered:' );
-        $this->logging_debug( $rendered );
+//      $this->logging_debug( '' );
+//      $this->logging_debug( 'rendered:' );
+//      $this->logging_debug( $rendered );
 
         $msgBoody = Markup::create($rendered);
 

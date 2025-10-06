@@ -2,6 +2,8 @@
 namespace Otpclasses\Otpclasses;
 
 use Drupal\Core;
+use Drupal\Core\Site\Settings;
+use Symfony\Component\HttpFoundation\RequestStack;
 
 class SimpleLogging
 {
@@ -43,22 +45,24 @@ class SimpleLogging
     {
       $this->timeZone = 'Europe/Kiev';
       $this->sitesBox = [];
-
+//    $debuggy = false;
 
       try {
           $langManager = \Drupal::languageManager();
           $this->lang = $langManager->getCurrentLanguage();
           $this->codeLang = $this->lang->getId();
           $this->error = 'код языка определен без ошибок.';
-        } catch ( \Exception $e) {
+          $this->domain = $this->GetCurrentSiteDomain();
+
+      } catch ( \Exception $e) {
           // Drupal активирован не из под апач ...
           $this->codeLang = 'uk';
           $this->error = 'exception';
-        } catch ( \Error $e) {
+      } catch ( \Error $e) {
           // Drupal активирован не из под апач ...
           $this->codeLang = 'uk';
           $this->error = 'error';
-        }
+      }
         //
         // если запуск не из под апача, а из под крона, то это только одно место в DRUPAL:
         //
@@ -83,21 +87,57 @@ class SimpleLogging
 
           foreach ($sites as $url => $folder) {
 
-            $langCaption = mb_substr($folder, 1);
+            $langCaption = mb_substr($folder, -2); // код сайта в конце строки содержит 2-значный код языка
             $language = ($langCaption == 'ua') ? 'uk' : $langCaption;
+            $folderLength = mb_strlen($folder);
 
-            if ( $language == $this->codeLang ) {
-              // определили текущий язык, а значит и текущий сайт
-              $this->domain = $url;
-              $this->captionLang = $langCaption;
-              $this->sitesBox[] = ['folder'=>$folder, 'domain'=>$url, 'lang'=>$language];  // всегда первым в массиве!
-              break;
+            if ( $language == $this->codeLang ) { // bua, bru, ben, skyua
+              if ( $folderLength <= 3) {
+                if ( !empty($this->domain) ) {
+                  if ( $url == $this->domain ) {
+                    // определили текущий язык, а значит и текущий сайт
+//                  $debuggy = true;
+
+                    $this->captionLang = $langCaption;
+                    $this->sitesBox[] = ['folder' => $folder, 'domain' => $url, 'lang' => $language];  // всегда первым в массиве!
+                    break;
+                  }
+                } else {
+                  // домен пустой. скорее всего запуск из модуля агента, считаем что домен можно определить по языку
+                  // и скорее всего язык украинский, а домен украинского основного сайта (для определенности).
+
+                  $this->domain = $url;
+                  $this->captionLang = $langCaption;
+                  $this->sitesBox[] = ['folder' => $folder, 'domain' => $url, 'lang' => $language];  // всегда первым в массиве!
+                  break;
+                }
+              } else {
+
+                if ( !empty($this->domain) ) {
+                  if ( $url == $this->domain ) {
+                    // определили текущий сайт лэндинга по домену и языку
+
+                    $this->captionLang = $langCaption;
+                    $this->sitesBox[] = ['folder' => $folder, 'domain' => $url, 'lang' => $language];  // всегда первым в массиве!
+                    break;
+                  }
+                } else {
+                  // домен пустой. скорее всего запуск из модуля агента, считаем что домен можно определить по языку
+                  // и скорее всего язык украинский, а домен украинского основного сайта (для определенности).
+
+                  $this->domain = $url;
+                  $this->captionLang = $langCaption;
+                  $this->sitesBox[] = ['folder' => $folder, 'domain' => $url, 'lang' => $language];  // всегда первым в массиве!
+                  break;
+                }
+              }
             }
+
           }
 
           foreach ($sites as $url => $folder) {
 
-            $langCaption = mb_substr($folder, 1);
+            $langCaption = mb_substr($folder, -2 );
             $language = ($langCaption == 'ua') ? 'uk' : $langCaption;
 
             if ( $url != $this->domain ) {
@@ -126,6 +166,12 @@ class SimpleLogging
         $this->fullNameDebugLog = str_replace( '.log', $this->debugPrefix, $this->fullNameLog ) . '.log';
         $this->boxLoggingIp     = [];
         $this->ipClient         = $this->ClientIp();
+
+//      if( $debuggy ) {
+//        $this->logging_debug('Domain: ' . $this->GetCurrentSiteDomain());
+//        $this->logging_debug('sites: ');
+//        $this->logging_debug($sites);
+//      }
     }
 
     public function __destruct() {
@@ -160,6 +206,19 @@ class SimpleLogging
     public function SetLoggingIp( $listIp ) {
 
         $this->boxLoggingIp     = $listIp;
+    }
+
+    public function GetCurrentSiteDomain()
+    {
+      $requestStack = \Drupal::service('request_stack');
+      $request = $requestStack->getCurrentRequest();
+      if ($request) {
+        $result = $request->getHttpHost(); // getSchemeAndHttpHost();
+      } else {
+        $result = '';
+      }
+
+      return $result;
     }
 
     public function SearchTextInBoxSimple( $text, $box, &$index=0 )

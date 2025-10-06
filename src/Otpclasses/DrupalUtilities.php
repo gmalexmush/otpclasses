@@ -6,6 +6,7 @@ namespace Otpclasses\Otpclasses;
 //
 use Drupal\file\Entity\File;
 use Drupal\media\Entity\Media;
+use Drupal\node\Entity\NodeType;
 use Otpclasses\Otpclasses\StringUtilities;
 use Otpclasses\Otpclasses\UrlUtilities;
 
@@ -27,6 +28,25 @@ class DrupalUtilities extends StringUtilities
     public function __destruct() {
 
         parent::__destruct();
+    }
+
+    public function NodeTypeExists( $nodeTypeMachineName )
+    {
+      $result = false;
+
+      $boxNodeTypes = NodeType::loadMultiple(); // Получаем все типы узлов
+//    $this->logging_debug( '' );
+//    $this->logging_debug( 'boxNodeTypes:' );
+//    $this->logging_debug( $boxNodeTypes );
+
+      foreach ($boxNodeTypes as $nodeType) {
+//      $this->logging_debug( 'NodeType id: ' . $nodeType->id() );
+
+        if( $nodeType->id() === mb_strtolower( $nodeTypeMachineName ) ) {
+          $result = true; // Тип контента найден
+        }
+      }
+      return $result;
     }
 
     public function LoadImageFromRow( &$boxImg, $box, $fieldImage,
@@ -458,7 +478,290 @@ class DrupalUtilities extends StringUtilities
     return( $result );
   }
 
+    public function LoadTableTabsByReferencedId( &$boxResult, $params )
+      //
+      // Метод вычитывает таблицу ( набор ) закладок из справочников закладок, согласно заданному массиву параметров,
+      // описанному ниже:
+      //
+      // $params = [
+      //  'table' =>    [
+      //                  'type' => 'TabsTables',
+      //                  'id' => '...',
+      //                  'entity' => 'node',
+      //                  'published' => 1,
+      //                  'fields' => [
+      //                          'code' => 'field_code100'
+      //                          ], // символьный код и заголовок
+      //                  'field_image' => '',
+      //                  'sort' => [ 'name' => 'field_sorting',
+      //                              'direction' => 'asc' ],
+      //
+      //                ],
+      //  'tabs' =>     [
+      //                  'type' => 'Tabs',
+      //                  'tables_included' => 'field_tablesincluded',
+      //                  'entity' => 'node',
+      //                  'published' => 1,
+      //                  'fields' => [
+      //                          'code' => 'field_code100'
+      //                          ], // символьный код, заголовок, и список ID таблиц в которые эта закладка включена
+      //                  'field_image' => '',
+      //                  'sort' => [ 'name' => 'field_sorting',
+      //                              'direction' => 'asc' ],
+      //
+      //                ],
+      //  'elements' => [
+      //                  'type'  => 'TabElements',
+      //                  'tabs_included' => 'field_tabsincluded',
+      //                  'entity' => 'node',
+      //                  'published' => 1,
+      //                  'fields' => [
+      //                          'code' => 'field_code100',
+      //                          'html' => 'field_annoncehtml',
+      //                          'link' => 'field_formlink',
+      //                          'img'  => 'field_urlimage',
+      //                          'target' => 'field_target'
+      //                          ], // символьный код, заголовок, и т.д. и список ID закладок в которые этот элемент включен
+      //                  'field_image' => '',
+      //                  'sort' => [ 'name' => 'field_sorting',
+      //                              'direction' => 'asc' ],
+      //
+      //                ]
+      // ]
+      //
+      // $boxResult:
+      //  [
+      //    [
+      //     "id": "53",                          // id закладки
+      //     "title": "Всі продавці",             // название текущей закладки
+      //     "code": "first",                     // код закладки
+      //     "items": [                           // массив объектов текущей закладки
+      //              "id": "58",
+      //              "title": "Allo",
+      //              "code": "allo",
+      //              "html": "",
+      //              "link": [
+      //                        "https://allo.ua/",
+      //                        "Замовити",
+      //                        "title="Замовити"",
+      //                        "alt="Замовити"",
+      //                        "target="_blank""
+      //                    ],
+      //              "img": "/sites/bua/files/company/allo.png",
+      //              "target": "landing"
+      //              ],
+      //              ....
+      //
+      // ]
+    {
+      $result = [ 'errorCode' => -1 ]; // ошибка
+//    $boxTable = [];
+//    $boxTabs = [];
+      $boxResult = [];
 
+      if( !empty( $params['table'] ) ) {
+
+        $idTable = [ $params['table']['id'] ];
+        $type = $params['table']['type'];
+        $boxFields = $params['table']['fields'];
+        $fieldImage = $params['table']['field_image'] ?? '';
+        $sort = $params['table']['sort']['name'] ?? '';
+        $sortDirection = $params['table']['sort']['direction'] ?? '';
+        $entity = $params['table']['entity'] ?? '';
+        $status = $params['table']['published'] ?? '';
+
+        if( !empty( $idTable ) || !empty( $type ) || !empty( $boxField ) )
+          $result = $this->LoadByReferencedId( $boxResult, $type, $idTable, $boxFields, $fieldImage,
+                                                $sort, $sortDirection, $entity, $status );
+        if( empty( $result ) ) {
+
+//        $this->logging_debug( '' );
+//        $this->logging_debug( 'idTable:' );
+//        $this->logging_debug( $params['table']['id'] );
+//        $this->logging_debug( '' );
+//        $this->logging_debug( 'boxTable:' );
+//        $this->logging_debug( $boxResult );
+
+          $typeTabs = $params['tabs']['type'];
+          $fieldTables = $params['tabs']['tables_included'];
+          $boxFieldsTabs = $params['tabs']['fields'];
+          $fieldImageTabs = $params['tabs']['field_image'] ?? '';
+          $sortTabs = $params['tabs']['sort']['name'] ?? '';;
+          $sortDirectionTabs = $params['tabs']['sort']['direction'] ?? '';;
+          $entityTabs = $params['tabs']['entity'] ?? '';;
+          $statusTabs = $params['tabs']['published'] ?? '';;
+
+          $boxResult['tabs'] = [];
+
+          if( !empty( $params['table']['id'] ) || !empty( $typeTabs ) || !empty( $boxField ) )
+            $result = $this->LoadByIncludedId( $boxResult['tabs'], $typeTabs, $fieldTables, $params['table']['id'], $boxFieldsTabs, $fieldImageTabs,
+                                                  $sortTabs, $sortDirectionTabs, $entityTabs, $statusTabs );
+          if( empty( $result ) ) {
+//          $this->logging_debug( '' );
+//          $this->logging_debug( 'boxTabs:' );
+//          $this->logging_debug( $boxResult['tabs'] );
+
+            foreach ( $boxResult['tabs'] as & $tab ) {
+
+              $elements = [];
+
+              $typeElements = $params['elements']['type'];
+              $fieldTabs = $params['elements']['tabs_included'];
+              $boxFieldsElements = $params['elements']['fields'];
+              $fieldImageElements = $params['elements']['field_image'] ?? '';
+              $sortElements = $params['elements']['sort']['name'] ?? '';;
+              $sortDirectionElements = $params['elements']['sort']['direction'] ?? '';;
+              $entityElements = $params['elements']['entity'] ?? '';;
+              $statusElements = $params['elements']['published'] ?? '';;
+
+              if (!empty($params['table']['id']) || !empty($typeTabs) || !empty($boxField))
+                $result = $this->LoadByIncludedId($elements, $typeElements, $fieldTabs, $tab['id'], $boxFieldsElements, $fieldImageElements,
+                                                    $sortElements, $sortDirectionElements, $entityElements, $statusElements );
+
+              if( empty( $result ) ) {
+                  $tab['items'] = $elements;
+                  $tab['count'] = count( $elements );
+//                $this->logging_debug( '' );
+//                $this->logging_debug( 'elements:' );
+//                $this->logging_debug( $elements );
+              } else {
+                  $result = [ 'errorCode' => -1 ]; // ошибка
+                  $this->logging_debug( 'Ошибка загрузки массива элементов!' );
+                  break;
+              }
+            }
+
+//          $this->logging_debug( '' );
+//          $this->logging_debug( 'boxResult:' );
+//          $this->logging_debug( $boxResult );
+          }
+        }
+
+      } else {
+          $this->logging_debug( 'Во входном массиве параметров не задана таблица закладок.' );
+      }
+
+      return( $result );
+    }
+
+  public function LoadByIncludedId( & $boxResult, $type, $fieldIncluded, $idIncluded, $boxFields=[], $fieldImage='',
+                                      $sort='field_sorting', $sortDirection='asc', $entity='node', $status=1 )
+    //
+    // Метод вычитывает только те результаты в которых в поле: $fieldIncluded попадаются $idIncluded.
+    //
+    //
+    // $boxResult =
+    // [ 0 =>
+    //      [
+    //           'title' => '....',
+    //         { 'image' => ['url'=>'...', ... ] } - необязательное, только если указано: $fieldImage
+    //         {  ...                            } - необязательное, только если указано: $boxFields
+    //      ]
+    //
+    //   1 =>
+    //      [
+    //           'title' => '....',
+    //           ...
+    //      ]
+    //
+    //   ...
+    // ]
+    //
+  {
+    $result = [ 'errorCode' => -1 ]; // ошибка
+
+    try {
+      $nids = \Drupal::entityQuery( $entity )->accessCheck(FALSE)
+        ->condition('status', $status )
+        ->condition('type', $type )
+        ->condition($fieldIncluded, $idIncluded )
+        ->sort($sort, $sortDirection)
+        ->execute();
+
+      if (!empty($nids))
+        $data = \Drupal\node\Entity\Node::loadMultiple($nids);
+
+      if (!empty($data)) {
+
+        foreach ($data as $node) {
+
+          $resultSet = $node->toArray();
+//        $this->logging_debug( 'resultSet:' );
+//        $this->logging_debug( $resultSet );
+
+          $item = [];
+          $item = [
+            'id' => $resultSet['nid'][0]['value'],
+            'title' => $resultSet['title'][0]['value']
+          ];
+          //
+          if( ! empty( $fieldImage ) ) {
+            $media = Media::load( $resultSet[ $fieldImage ][0]['target_id'] );
+            $boxMedia = $media->toArray();
+//          $this->logging_debug( 'media:' );
+//          $this->logging_debug( $boxMedia );
+            $meta = $boxMedia['thumbnail'][0];
+
+            if (!empty($media)) {
+
+              $source = $media->getSource();
+              $fid = $source->getSourceFieldValue($media);
+              $file = File::load($fid);
+
+              if (!empty($file)) {
+
+                $url = \Drupal::service('file_url_generator')->generateString($file->getFileUri());
+
+                $imgBox = [
+                  'file_id' => $file->id(),
+                  'created' => date('d-m-Y', $file->getCreatedTime()),
+                  'changed' => date('d-m-Y', $file->getChangedTime()),
+                  'name' => $file->getFilename(),
+                  'label' => empty($meta) ? $file->label() : $meta['alt'],
+                  'url' => $url,
+                  'mime' => $file->getMimeType()
+                ];
+
+                $item['image'] = $imgBox;
+              }
+            }
+          }
+
+          if( ! empty( $boxFields ) ) {
+            foreach ( $boxFields as $code => $name ) {
+
+              if( count( $resultSet[$name] ) > 1 ) {
+
+//                $this->logging_debug( '' );
+//                $this->logging_debug( 'code: ' . $code . ', name: ' . $name );
+//                $this->logging_debug( $resultSet[ $name ] );
+
+                $i=0;
+                foreach ($resultSet[$name] as $value) {
+                  $item[$code][] = $value['value'];
+                  $i++;
+                }
+              } else {
+                $item[$code] = empty( $resultSet[$name][0]['value'] ) ? '' : $resultSet[$name][0]['value'];
+              }
+            }
+          }
+
+          $boxResult [] = $item;
+        }
+      }
+      $result = [];
+
+    } catch( \Exception $e ) {
+
+      $result = ['errorCode' => $e->getCode(), 'errorMessage' => $e->getMessage()];
+      $this->logging_debug( '' );
+      $this->logging_debug( 'Exception:' );
+      $this->logging_debug( $result );
+    }
+
+    return( $result );
+  }
 
 
     public function LoadMultyTypeByReferencedId( & $boxResult, $boxType, $boxId, $boxFields=[], $fieldImage='',

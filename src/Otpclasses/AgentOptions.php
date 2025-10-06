@@ -1914,55 +1914,76 @@ class AgentOptions extends LogUtilities
 
 
 
-	public function SendAdminMessagePeriodically( $subject, $msgEmail, $force=false )
+	public function SendAdminMessagePeriodically( $twigPath,
+                                                $template,
+                                                $mailOptions,
+                                                $mailMsg='',
+                                                $mailSubj='',
+                                                $title='',
+                                                $force=false  )
 		//
 		// Периодическая отправка сообщений админу ( раз в заданный период ), чтобы не валило кулем ...
 		//
 	{
+    $result                 = false;
+    $datetimeLastMailSend   = empty( $this->timeLastMailSend ) ? time() - 3600 * $this->periodAdminMessage : $this->timeLastMailSend;
+    $secondPassed           = time() - $datetimeLastMailSend;
+    $periodMailing          = 3600 * $this->periodAdminMessage;
+    $secondsLeft            = $periodMailing - $secondPassed;
 
-		$resultSend             = false;
-		$datetimeLastMailSend   = empty( $this->timeLastMailSend ) ? time() - 3600 * $this->periodAdminMessage : $this->timeLastMailSend;
-		$secondPassed           = time() - $datetimeLastMailSend;
-		$periodMailing          = 3600 * $this->periodAdminMessage;
-		$secondsLeft            = $periodMailing - $secondPassed;
+    if( $secondsLeft <= 0 || $force ) {
 
-		if( $secondsLeft <= 0 || $force ) {
-			//
-			// используем e-mal для тестового сообщения
-			//
-			$localEmailTO     = CommonDataBox::$boxEmail[ 'TestSending' ][ 'EmailTo' ];
-			$localEmailCC     = CommonDataBox::$boxEmail[ 'TestSending' ][ 'EmailCC' ];
-			$localEmailBCC    = CommonDataBox::$boxEmail[ 'TestSending' ][ 'EmailBCC' ];
-			$localEmailFrom   = CommonDataBox::$boxEmail[ 'TestSending' ][ 'EmailFrom' ];
+      $msgSubject = empty($mailSubj) ? 'admin message from ' . $this->moduleName . ' module.' : $mailSubj;
+      $userName = $this->currentUserName;
 
-			$templateBox = [
-				'EMAIL_FROM' => $localEmailFrom,
-				'EMAIL_TO' => $localEmailTO,
-				'CC' => $localEmailCC,
-				'BCC' => $localEmailBCC
-			];
+      $msgBox = [
+        'SUBJECT' => $msgSubject,
+        'USERNAME' => $userName,
+        'SERVER_NAME' => $this->domain,
+        'DATE_CREATE_EMAIL' => date("d.m.Y"),
+        'DATETIME_CREATE_EMAIL' => date("d.m.Y H:i:s"),
+        'MODULE' => $this->moduleName,
+        'TITLE' => $title,
+        'MESSAGE' => $mailMsg
+      ];
+      //
+      $pathModule = \Drupal::service('extension.list.module')->getPath($this->moduleName);
+      $pathTemplate = $pathModule . $twigPath . $template;
+      //
+      $result = $this->mailHandle->SendMessage(
+        $msgBox,
+        $pathTemplate,
+        $mailOptions['EmailFrom'],    // mail from
+        $mailOptions['EmailTo'],      // mail to
+        $mailOptions['EmailCC'],      // mail cc
+        $mailOptions['EmailBCC']      // mail bcc
+      );
 
-			$resultSend = $this->SendMail(
-        $msgEmail,
-        $subject,
-				$templateBox['EMAIL_TO'],
-        $templateBox['EMAIL_FROM'],
-				$templateBox['CC'],
-				$templateBox['BCC']
-			);
+      if ($result) {
+        $this->timeLastMailSend  = time();
 
-			if ($resultSend) {
-				$this->timeLastMailSend  = time();
-				$this->logging_debug('Почтовое сообщение отправлено на адреса администраторов:');
-				$this->logging_debug($templateBox);
-			}
-		} else {
+        $this->logging_debug('');
+        $this->logging_debug('Почтовое сообщение отправлено!');
+        $this->logging_debug('from: ' . $mailOptions['EmailFrom']);
+        $this->logging_debug('to: ' . $mailOptions['EmailTo']);
+        $this->logging_debug('cc: ' . $mailOptions['EmailCC']);
+        $this->logging_debug('bcc: ' . $mailOptions['EmailBCC']);
+      } else {
+        $this->logging_debug('');
+        $this->logging_debug('Ошибка отправки почтового сообщения!');
+        $this->logging_debug('from: ' . $mailOptions['EmailFrom']);
+        $this->logging_debug('to: ' . $mailOptions['EmailTo']);
+        $this->logging_debug('cc: ' . $mailOptions['EmailCC']);
+        $this->logging_debug('bcc: ' . $mailOptions['EmailBCC']);
+      }
+    } else {
 
-			$this->logging_debug( 'Время отправки почтового сообщения еще не наступило, ждем ' . $secondsLeft . ' секунд! Последняя отправка была: ' . date( "d-m-Y H:i:s", $datetimeLastMailSend ) );
-			$this->logging_debug( $msgEmail );
-		}
+      $this->logging_debug( 'Время отправки почтового сообщения еще не наступило, ждем ' . $secondsLeft . ' секунд! Последняя отправка была: ' . date( "d-m-Y H:i:s", $datetimeLastMailSend ) );
+      $this->logging_debug( $mailMsg );
+    }
 
-		return( $resultSend );
+
+    return( $result );
 	}
 
 

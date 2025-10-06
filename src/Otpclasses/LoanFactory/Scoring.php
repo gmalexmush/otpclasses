@@ -26,14 +26,15 @@ class Scoring extends MailUtilities
       $result = $english;
 
       $scoringDecision = [
-        'Decline' => 'Відмова',
-        'Verify' => 'Погоджено',
-        'Approve' => 'Погоджено',
-        'Review' => 'не задіяно в процесі прескорингу станом на зараз',
-        'scoringError' => 'Помилка прескорингу'
+        'decline' => 'Відмова',
+        'verify' => 'Погоджено',
+        'approve' => 'Погоджено',
+        'review' => 'не задіяно в процесі прескорингу станом на зараз',
+        'scoringerror' => 'Помилка прескорингу'
       ];
 
-      $result = $scoringDecision[ $english ];
+      $responseCode = mb_strtolower( $english );
+      $result = $scoringDecision[ $responseCode ];
 
       if( empty( $result ) )
         $result = $english;
@@ -147,6 +148,7 @@ class Scoring extends MailUtilities
 
         if( ! empty( $retInfo['requestId'] ) && $retInfo['key'] == 'OK' ) {
 
+          $retInfo['scoringDecision']                    = mb_strtolower( $retInfo['scoringDecision'] );
           $scoringStatus                                 = $retInfo['scoringDecision'];
 
           $result['scoring']['result_request_id']        = $retInfo['requestId'];        // Request ID
@@ -167,7 +169,7 @@ class Scoring extends MailUtilities
           $result['scoring']['result_message']           = $retInfo['message'];
           $result['scoring']['result_source']            = '';
           $result['scoring']['result_creditLimitAmount'] = 0;
-          $result['scoring']['result_code']              = 'scoringError';
+          $result['scoring']['result_code']              = 'scoringerror';
           $result['scoring']['result_scoringDecision']   = $this->TranslateDecision( $result['scoring']['result_code'] );
           $result['scoring']['result_isSuccessful']      = false;
           $result['scoring']['result_stackTrace']        = $retInfo['stackTrace'];
@@ -239,7 +241,7 @@ class Scoring extends MailUtilities
     $result['scoring']['result_message'] = $msg;
     $result['scoring']['result_source']            = '';
     $result['scoring']['result_creditLimitAmount'] = 0;
-    $result['scoring']['result_code']              = 'scoringError';
+    $result['scoring']['result_code']              = 'scoringerror';
     $result['scoring']['result_scoringDecision']   = $this->TranslateDecision( $result['scoring']['result_code'] );
     $result['scoring']['result_isSuccessful']      = false;
     $result['scoring']['result_stackTrace']        = '';

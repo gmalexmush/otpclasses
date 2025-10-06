@@ -86,14 +86,26 @@ class FaqJoint extends UrlUtilities
     $title = empty( $resultSet['title'][0]['value'] ) ? '' : $resultSet['title'][0]['value'];
     $created = date('d-m-Y', $resultSet['created'][0]['value']);
 
+    if( ! empty( $resultSet['field_codefolder'] ) ) {
+        $group = [
+              'code' => empty($resultSet['field_codefolder'][0]['value']) ? '' : $resultSet['field_codefolder'][0]['value'],
+              'title' => empty($resultSet['field_productcaption'][0]['value']) ? '' : $resultSet['field_productcaption'][0]['value'],
+              'sort' => empty($resultSet['field_groupsorting'][0]['value']) ? 10 : $resultSet['field_groupsorting'][0]['value']
+              ];
+    } else {
+      $group = [];
+    }
+
     $result = [
       'folder' => $folder,
       'id' => $resultSet['nid'][0]['value'],
       'code' => $resultSet['field_code100'][0]['value'],
+      'group' => $group,
       'date_from' => $created,
       'name' => empty( $resultSet['title'][0]['value'] ) ? '' : $resultSet['title'][0]['value'],
       'annonce' => empty( $resultSet['field_blocktitle'][0]['value'] ) ? '' : $resultSet['field_blocktitle'][0]['value'],
-      'detail' => empty( $resultSet['field_detailshtml'][0]['value'] ) ? '' : $resultSet['field_detailshtml'][0]['value']
+      'detail' => empty( $resultSet['field_detailshtml'][0]['value'] ) ? '' : $resultSet['field_detailshtml'][0]['value'],
+      'template' => empty( $resultSet['field_template'][0]['value'] ) ? 'default' : $resultSet['field_template'][0]['value']
     ];
 
     //
@@ -137,6 +149,76 @@ class FaqJoint extends UrlUtilities
     return( $result );
   }
 
+  public function TransformByGroup( $items )
+  {
+    $result = [];
+    $groups = [];
+    $noGroup      = 'empty';
+    $noGroupTitle = 'Empty group';
+    $isEmptyGroup = false;
+
+    foreach ( $items as & $item ) {
+      if( ! empty( $item['group'] ) ) {
+        if( ! in_array( $item['group']['code'], $groups ) ) {
+          if( empty( $groups[$item['group']['sort']] ) )
+            $groups[$item['group']['sort']] = $item['group']['code'];
+          else
+            $groups[$item['group']['sort'] + 1000] = $item['group']['code']; // автоисправление ошибки сортировки !!!
+        }
+      } else {
+        $isEmptyGroup = true;
+      }
+    }
+
+    if( ! empty( $groups ) ) {
+
+      if( $isEmptyGroup ) {
+        if (!in_array($noGroup, $groups) ) // обнаружены незаполненные группы наряду с заполненными - добавляем пустую группу
+          $groups[0] = $noGroup;
+      }
+
+      ksort( $groups ); // сортировать по ключам массив
+
+      foreach ( $groups as $sort => $group ) {
+        $groupBox   = $this->GetGroupItems( $group, $noGroup, $noGroupTitle, $items );
+
+//      $this->logging_debug( 'groupBox:' );
+//      $this->logging_debug( $groupBox );
+
+        foreach ( $groupBox as & $groupItem ) {
+          $titleGroup = $groupItem['group']['title'];
+          unset($groupItem['group']);
+        }
+
+        $result[ $group ] = [
+                      'title' => $titleGroup,
+                      'items' => $groupBox
+                  ];
+      }
+
+    }
+
+    return $result;
+  }
+
+  public function GetGroupItems( $group, $noGroup, $noGroupTitle, $items ) {
+    $result = [];
+
+    foreach ( $items as $item ) {
+      if( ! empty( $item['group'] ) && $group != $noGroup ) {
+
+        if( $item['group']['code'] == $group ) {
+          $result[] = $item;
+        }
+      } elseif ( empty( $item['group'] ) && $group == $noGroup ) {
+        $item['group']['code']  = $noGroup;
+        $item['group']['title'] = $noGroupTitle;
+        $result[] = $item;
+      }
+    }
+
+    return $result;
+  }
 
 }
 
