@@ -45,7 +45,6 @@ class LogUtilities extends SimpleLogging
 
     function __construct( $logName = '/log_utilities.log', $cuteIdentifier = 'Log_Utilities.', $cuteModule = true, $withOldLog = true )
     {
-        parent::__construct( $logName );
 
         $this->ShowTimeStamp    = false;
         $this->logFileSizeLimit = 16 * 1024 * 1024;             // 16 MB
@@ -76,6 +75,8 @@ class LogUtilities extends SimpleLogging
 
         $this->logIfRegistered  = false;
         $this->isOrderCut = false;
+
+        parent::__construct( $logName );
     }
 
 
