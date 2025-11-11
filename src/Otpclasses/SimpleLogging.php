@@ -175,6 +175,7 @@ class SimpleLogging
         $this->logging_debug( 'SimpleLogging siteBox: ');
         $this->logging_debug($this->sitesBox);
         //
+//
 //      if( $debuggy ) {
 //        $this->logging_debug('Domain: ' . $this->GetCurrentSiteDomain());
 //        $this->logging_debug('sites: ');
