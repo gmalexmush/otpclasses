@@ -171,8 +171,9 @@ class SimpleLogging
         $this->boxLoggingIp     = [];
         $this->ipClient         = $this->ClientIp();
         //
-//      $this->logging_debug('siteBox: ');
-//      $this->logging_debug($this->sitesBox);
+        $this->logging_debug( 'port: ' . $port );
+        $this->logging_debug('siteBox: ');
+        $this->logging_debug($this->sitesBox);
         //
 //      if( $debuggy ) {
 //        $this->logging_debug('Domain: ' . $this->GetCurrentSiteDomain());
