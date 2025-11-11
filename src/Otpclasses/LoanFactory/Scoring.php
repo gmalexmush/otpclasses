@@ -29,7 +29,7 @@ class Scoring extends MailUtilities
         'decline' => 'Відмова',
         'verify' => 'Погоджено',
         'approve' => 'Погоджено',
-        'review' => 'не задіяно в процесі прескорингу станом на зараз',
+        'review' => 'Умовно погоджено',
         'scoringerror' => 'Помилка прескорингу'
       ];
 

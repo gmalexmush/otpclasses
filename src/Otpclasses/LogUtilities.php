@@ -8,7 +8,6 @@ use Drupal\Core\Datetime\DrupalDateTime;
 use Drupal\datetime\Plugin\Field\FieldType\DateTimeItemInterface;
 use Drupal\Core\DrupalKernel;
 use Drupal\Core\Database;
-use Drupal\Core\Site\Settings;
 use Symfony\Component\HttpFoundation\Request;
 use Otpclasses\Otpclasses\SimpleLogging;
 use Otpclasses\Otpclasses\XMLUtility;
@@ -1994,11 +1993,6 @@ class LogUtilities extends SimpleLogging
     return ($boxFiles);
   }
 
-  public function DrupalCurrentSiteProtocol()
-  {
-    $protocol = Settings::get('SITE_PROTOCOL') . '://';
-    return $protocol;
-  }
 
 
 }

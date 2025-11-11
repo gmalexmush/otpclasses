@@ -83,6 +83,10 @@ class SimpleLogging
         if( is_file( $sitesPath ) )
             include( $sitesPath );  // массив $sites загружается из настроек ДРУПАЛ-а
 
+
+        $port = Settings::get('SITE_PORT');
+
+
         if( ! empty( $sites ) ) {
 
           foreach ($sites as $url => $folder) {
@@ -91,7 +95,7 @@ class SimpleLogging
             $language = ($langCaption == 'ua') ? 'uk' : $langCaption;
             $folderLength = mb_strlen($folder);
 
-            if ( $language == $this->codeLang ) { // bua, bru, ben, skyua
+            if ( $language == $this->codeLang ) { // bua, bru, ben, skyua, refua
               if ( $folderLength <= 3) {
                 if ( !empty($this->domain) ) {
                   if ( $url == $this->domain ) {
@@ -99,7 +103,7 @@ class SimpleLogging
 //                  $debuggy = true;
 
                     $this->captionLang = $langCaption;
-                    $this->sitesBox[] = ['folder' => $folder, 'domain' => $url, 'lang' => $language];  // всегда первым в массиве!
+                    $this->sitesBox[] = ['folder' => $folder, 'domain' => $url, 'lang' => $language, 'port' => $port ];  // всегда первым в массиве!
                     break;
                   }
                 } else {
@@ -108,7 +112,7 @@ class SimpleLogging
 
                   $this->domain = $url;
                   $this->captionLang = $langCaption;
-                  $this->sitesBox[] = ['folder' => $folder, 'domain' => $url, 'lang' => $language];  // всегда первым в массиве!
+                  $this->sitesBox[] = ['folder' => $folder, 'domain' => $url, 'lang' => $language, 'port' => $port ];  // всегда первым в массиве!
                   break;
                 }
               } else {
@@ -118,7 +122,7 @@ class SimpleLogging
                     // определили текущий сайт лэндинга по домену и языку
 
                     $this->captionLang = $langCaption;
-                    $this->sitesBox[] = ['folder' => $folder, 'domain' => $url, 'lang' => $language];  // всегда первым в массиве!
+                    $this->sitesBox[] = ['folder' => $folder, 'domain' => $url, 'lang' => $language, 'port' => $port ];  // всегда первым в массиве!
                     break;
                   }
                 } else {
@@ -127,7 +131,7 @@ class SimpleLogging
 
                   $this->domain = $url;
                   $this->captionLang = $langCaption;
-                  $this->sitesBox[] = ['folder' => $folder, 'domain' => $url, 'lang' => $language];  // всегда первым в массиве!
+                  $this->sitesBox[] = ['folder' => $folder, 'domain' => $url, 'lang' => $language, 'port' => $port ];  // всегда первым в массиве!
                   break;
                 }
               }
@@ -142,7 +146,7 @@ class SimpleLogging
 
             if ( $url != $this->domain ) {
               // этого домена в массиве еще нет - добавляем
-              $this->sitesBox[] = ['folder'=>$folder, 'domain'=>$url, 'lang'=>$language];
+              $this->sitesBox[] = [ 'folder'=>$folder, 'domain'=>$url, 'lang'=>$language, 'port' => $port ];
             }
           }
         }
@@ -166,7 +170,10 @@ class SimpleLogging
         $this->fullNameDebugLog = str_replace( '.log', $this->debugPrefix, $this->fullNameLog ) . '.log';
         $this->boxLoggingIp     = [];
         $this->ipClient         = $this->ClientIp();
-
+        //
+//      $this->logging_debug('siteBox: ');
+//      $this->logging_debug($this->sitesBox);
+        //
 //      if( $debuggy ) {
 //        $this->logging_debug('Domain: ' . $this->GetCurrentSiteDomain());
 //        $this->logging_debug('sites: ');
@@ -178,6 +185,12 @@ class SimpleLogging
 
         if( $this->IsStarting && ! $this->IsFinish )
             $this->LoggingFinish();
+    }
+
+    public function DrupalCurrentSiteProtocol()
+    {
+      $protocol = Settings::get('SITE_PROTOCOL') . '://';
+      return $protocol;
     }
 
     public function  SetLogOn( $state=true )  {
@@ -210,13 +223,17 @@ class SimpleLogging
 
     public function GetCurrentSiteDomain()
     {
-      $requestStack = \Drupal::service('request_stack');
-      $request = $requestStack->getCurrentRequest();
-      if ($request) {
-        $result = $request->getHttpHost(); // getSchemeAndHttpHost();
-      } else {
-        $result = '';
-      }
+      $result = \Drupal::request()->getHost();
+
+      return $result;
+    }
+
+  public function GetCurrentSiteHttpHost()
+    //
+    // вернет: домен:порт
+    //
+    {
+      $result = \Drupal::request()->getHttpHost();
 
       return $result;
     }
