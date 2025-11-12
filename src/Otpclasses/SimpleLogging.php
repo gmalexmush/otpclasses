@@ -83,7 +83,7 @@ class SimpleLogging
         if( is_file( $sitesPath ) )
             include( $sitesPath );  // массив $sites загружается из настроек ДРУПАЛ-а
 
-
+        sleep(1);
         $port = Settings::get('SITE_PORT');
 
 
@@ -171,9 +171,9 @@ class SimpleLogging
         $this->boxLoggingIp     = [];
         $this->ipClient         = $this->ClientIp();
         //
-        $this->LoggingInternal( 'SimpleLogging port: ' . $port );
-        $this->LoggingInternal( 'SimpleLogging siteBox: ');
-        $this->LoggingInternal($this->sitesBox);
+        $this->logging_debug( 'SimpleLogging port: ' . $port );
+        $this->logging_debug( 'SimpleLogging siteBox: ');
+        $this->logging_debug($this->sitesBox);
         //
 //
 //      if( $debuggy ) {
