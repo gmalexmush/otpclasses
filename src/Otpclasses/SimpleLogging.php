@@ -83,27 +83,7 @@ class SimpleLogging
         if( is_file( $sitesPath ) )
             include( $sitesPath );  // массив $sites загружается из настроек ДРУПАЛ-а
 
-        $port = Settings::get('SITE_PORT');
-        //
-        // если в settings.php не прочитался порт, загружаем его вручную.
-        //
-        $cSiteSettings = [];
-        if( empty( $port ) ) {
-          $currentSitePath = \Drupal::getContainer()->getParameter('site.path');
-          $currentSiteSetPath = $this->documentRoot . '/' . $currentSitePath . '/settings.php';
-          if (is_file($currentSiteSetPath)) {
-
-            (function ($currentSitePath, &$settings) {
-              $app_root = DRUPAL_ROOT;
-              $site_path = $currentSitePath;
-              $currentSiteSetPath = $this->documentRoot . '/' . $currentSitePath . '/settings.php';
-              include $currentSiteSetPath;
-            })($currentSitePath, $cSiteSettings);
-
-            $port = $cSiteSettings['SITE_PORT'];
-          }
-        }
-        //
+        $port = $this->GetPortCurrentHost();
 
 //      \Drupal::logger('SimpleLogging')->info('port: ' . $port );
 
@@ -191,7 +171,6 @@ class SimpleLogging
         $this->boxLoggingIp     = [];
         $this->ipClient         = $this->ClientIp();
         //
-        $this->logging_debug( 'Site path: ' . $currentSitePath );
         $this->logging_debug( 'SimpleLogging port: ' . $port );
         $this->logging_debug( 'SimpleLogging siteBox: ');
         $this->logging_debug($this->sitesBox);
@@ -208,6 +187,39 @@ class SimpleLogging
 
         if( $this->IsStarting && ! $this->IsFinish )
             $this->LoggingFinish();
+    }
+
+    public function GetPortCurrentHost()
+    {
+      $port = Settings::get('SITE_PORT');
+      //
+      // если в settings.php не прочитался порт, загружаем его вручную.
+      //
+      $cSiteSettings = [];
+      if( empty( $port ) ) {
+        $currentSitePath = \Drupal::getContainer()->getParameter('site.path');
+        $currentSiteSetPath = $this->documentRoot . '/' . $currentSitePath . '/settings.php';
+        if (is_file($currentSiteSetPath)) {
+
+          (function ($currentSitePath, &$cSiteSettings) {
+            $app_root = DRUPAL_ROOT;
+            $site_path = $currentSitePath;
+            $currentSiteSetPath = $this->documentRoot . '/' . $currentSitePath . '/settings.php';
+            include $currentSiteSetPath;
+          })($currentSitePath, $cSiteSettings);
+
+          $port = $cSiteSettings['SITE_PORT'];
+        }
+      }
+      //
+      return $port;
+    }
+
+    public function SetPortSites( $port )
+    {
+      foreach ( $this->sitesBox as &$siteItem ) {
+          $siteItem['port'] = $port;
+      }
     }
 
     public function DrupalCurrentSiteProtocol()
