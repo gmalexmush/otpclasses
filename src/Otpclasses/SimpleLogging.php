@@ -83,7 +83,6 @@ class SimpleLogging
         if( is_file( $sitesPath ) )
             include( $sitesPath );  // массив $sites загружается из настроек ДРУПАЛ-а
 
-        sleep(1);
         $port = Settings::get('SITE_PORT');
 
 
