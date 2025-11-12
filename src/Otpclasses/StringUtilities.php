@@ -4,6 +4,7 @@ namespace Otpclasses\Otpclasses;
 //
 // Здесь последняя версия утилит 2019.05.22
 //
+use Otpclasses\Otpclasses\SimpleLogging;
 use Otpclasses\Otpclasses\LogUtilities;
 use Otpclasses\Otpclasses\UrlUtilities;
 
