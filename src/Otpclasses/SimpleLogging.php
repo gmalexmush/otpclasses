@@ -84,7 +84,28 @@ class SimpleLogging
             include( $sitesPath );  // массив $sites загружается из настроек ДРУПАЛ-а
 
         $port = Settings::get('SITE_PORT');
-        \Drupal::logger('SimpleLogging')->info('port: ' . $port );
+        //
+        // если в settings.php не прочитался порт, загружаем его вручную.
+        //
+        $cSiteSettings = [];
+        if( empty( $port ) ) {
+          $currentSitePath = \Drupal::getContainer()->getParameter('site.path');
+          $currentSiteSetPath = $this->documentRoot . '/' . $currentSitePath . '/settings.php';
+          if (is_file($currentSiteSetPath)) {
+
+            (function ($currentSitePath, &$settings) {
+              $app_root = DRUPAL_ROOT;
+              $site_path = $currentSitePath;
+              $currentSiteSetPath = $this->documentRoot . '/' . $currentSitePath . '/settings.php';
+              include $currentSiteSetPath;
+            })($currentSitePath, $cSiteSettings);
+
+            $port = $cSiteSettings['SITE_PORT'];
+          }
+        }
+        //
+
+//      \Drupal::logger('SimpleLogging')->info('port: ' . $port );
 
         if( ! empty( $sites ) ) {
 
@@ -170,6 +191,7 @@ class SimpleLogging
         $this->boxLoggingIp     = [];
         $this->ipClient         = $this->ClientIp();
         //
+        $this->logging_debug( 'Site path: ' . $currentSitePath );
         $this->logging_debug( 'SimpleLogging port: ' . $port );
         $this->logging_debug( 'SimpleLogging siteBox: ');
         $this->logging_debug($this->sitesBox);
