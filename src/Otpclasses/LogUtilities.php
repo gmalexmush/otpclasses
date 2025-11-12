@@ -85,6 +85,15 @@ class LogUtilities extends SimpleLogging
             $this->LoggingFinish();
     }
 
+    public function GetPortCurrentHost()
+    {
+      parent::GetPortCurrentHost();
+    }
+
+    public function SetPortSites( $port )
+    {
+      parent::SetPortSites( $port );
+    }
 
     public function RefreshUserData() {
       $this->isAnonymouse             = \Drupal::currentUser()->isAnonymous();

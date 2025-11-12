@@ -31,7 +31,15 @@ class StringUtilities extends LogUtilities
         parent::__destruct();
     }
 
+    public function GetPortCurrentHost()
+    {
+      parent::GetPortCurrentHost();
+    }
 
+    public function SetPortSites( $port )
+    {
+      parent::SetPortSites( $port );
+    }
 
     public function  ConvertArrayToListStringByDelimiters( $box, $delimiter = ':' )
 	{
