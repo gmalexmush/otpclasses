@@ -84,7 +84,7 @@ class SimpleLogging
             include( $sitesPath );  // массив $sites загружается из настроек ДРУПАЛ-а
 
         $port = Settings::get('SITE_PORT');
-
+        \Drupal::logger('SimpleLogging')->info('port: ' . $port );
 
         if( ! empty( $sites ) ) {
 
